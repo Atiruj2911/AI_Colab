@@ -12,9 +12,9 @@
     --border: #233255;
     --text: #e5ecff;
     --muted: #8fa1c7;
-    --accent: #6d4aff;
-    --accent-hover: #7f60ff;
-    --danger: #ef4444;
+    --accent: #1F56C9;
+    --accent-hover: #1A4BB0;
+    --danger: #C42F2A;
     --ok: #22c55e;
     --warn: #f59e0b;
   }
@@ -22,8 +22,8 @@
   html, body {
     width: 100%; height: 100%; overflow: hidden;
     background: var(--bg); color: var(--text);
-    font-family: 'Inter', 'Noto Sans Thai', system-ui, -apple-system, sans-serif;
-    font-size: 13px;
+    font-family: 'Inter', 'Noto Sans Thai', system-ui, sans-serif;
+    font-size: 14px;
     user-select: none;
   }
   .app {
@@ -33,34 +33,35 @@
 
   /* ---------------- TOP TOOLBAR ---------------- */
   .topbar {
-    height: 48px; flex-shrink: 0;
+    min-height: 48px; height: auto; flex-shrink: 0;
     background: var(--panel); border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 12px; gap: 10px;
+    flex-wrap: wrap;
+    padding: 6px 12px; gap: 8px;
   }
   .top-group { display: flex; align-items: center; gap: 6px; }
   .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 
   .tb-btn {
-    height: 30px; padding: 0 7px; border-radius: 7px;
+    height: 32px; padding: 0 10px; border-radius: 6px;
     background: var(--panel-2); color: var(--text);
     border: 1px solid var(--border); cursor: pointer;
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 12px; font-weight: 500; transition: 0.12s; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500; white-space: nowrap;
   }
   .tb-btn:hover:not(:disabled) { background: #1c2a4d; border-color: #395085; }
+  .tb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .tb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .tb-btn.active {
-    background: var(--accent); border-color: #8b70ff; color: #fff;
-    box-shadow: 0 0 12px rgba(109,74,255,0.45);
+    background: var(--accent); border-color: var(--accent); color: #fff;
   }
-  .tb-btn.primary { background: linear-gradient(90deg, #6344f5, #7c5cff); border-color: #8b70ff; color: #fff; }
-  .tb-btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
-  .tb-btn.danger { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.45); color: #fca5a5; }
-  .tb-btn.danger:hover:not(:disabled) { background: rgba(239,68,68,0.3); }
+  .tb-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tb-btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .tb-btn.danger { background: transparent; border-color: var(--danger); color: #fca5a5; }
+  .tb-btn.danger:hover:not(:disabled) { background: rgba(196,47,42,0.25); }
 
   .tb-select {
-    height: 32px; padding: 0 8px; border-radius: 7px;
+    height: 32px; padding: 0 8px; border-radius: 6px;
     background: #0b1224; color: var(--text);
     border: 1px solid var(--border); font-size: 12.5px; outline: none;
   }
@@ -96,7 +97,7 @@
     background: var(--panel-2); border: 1px solid var(--border);
     color: var(--muted); font-size: 11px; cursor: pointer;
   }
-  .pill.active { background: var(--accent); color: #fff; border-color: #8b70ff; }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .gallery-list {
     flex: 1; overflow-y: auto; padding: 8px;
     display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start;
@@ -106,7 +107,7 @@
     overflow: hidden; cursor: pointer; position: relative; transition: 0.12s;
   }
   .thumb-card:hover { border-color: #3b5288; }
-  .thumb-card.active { border-color: var(--accent); box-shadow: 0 0 10px rgba(109,74,255,0.4); }
+  .thumb-card.active { border-color: var(--accent); }
   .thumb-card img {
     width: 100%; height: 68px; object-fit: cover; display: block; background: #050812;
   }
@@ -125,8 +126,7 @@
   /* CENTER CANVAS */
   .canvas-wrap {
     flex: 1; min-width: 0; position: relative; overflow: hidden;
-    background:
-      radial-gradient(circle at 50% 50%, #121c38 0%, #070b16 100%);
+    background: #2A2E35;
     display: flex; align-items: center; justify-content: center;
   }
   #canvas {
@@ -181,8 +181,7 @@
     display: flex; flex-direction: column; gap: 8px;
   }
   .r-title {
-    font-size: 11.5px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.04em; color: var(--muted);
+    font-size: 13px; font-weight: 600; color: var(--text);
     display: flex; justify-content: space-between; align-items: center;
   }
   .class-row {
@@ -202,7 +201,7 @@
   .icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
   .add-row { display: flex; gap: 5px; }
   .add-row input {
-    flex: 1; height: 30px; padding: 0 8px; border-radius: 6px;
+    flex: 1; height: 32px; padding: 0 8px; border-radius: 6px;
     background: #0b1224; border: 1px solid var(--border); color: var(--text); outline: none;
   }
   .add-row input:focus { border-color: var(--accent); }
@@ -234,7 +233,7 @@
 
   /* BOTTOM STATUS BAR */
   .bottombar {
-    height: 38px; flex-shrink: 0;
+    min-height: 40px; height: auto; flex-shrink: 0; flex-wrap: wrap;
     background: var(--panel); border-top: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 12px; gap: 10px; font-size: 12px;
@@ -266,25 +265,25 @@
     </div>
 
     <div class="top-group">
-      <button id="toolSelect" class="tb-btn" title="เลือก / ย้าย / ปรับขนาดกรอบ (V)">🖱️ Select <span class="kbd">V</span></button>
-      <button id="toolBox" class="tb-btn active" title="วาดกรอบ Bounding Box (B)">⬜ Box <span class="kbd">B</span></button>
-      <button id="toolPan" class="tb-btn" title="เลื่อนภาพ (H หรือกด Space ค้าง)">✋ Pan <span class="kbd">H</span></button>
+      <button id="toolSelect" class="tb-btn" title="เลือก / ย้าย / ปรับขนาดกรอบ (V)">Select <span class="kbd">V</span></button>
+      <button id="toolBox" class="tb-btn active" title="วาดกรอบ Bounding Box (B)">Box <span class="kbd">B</span></button>
+      <button id="toolPan" class="tb-btn" title="เลื่อนภาพ (H หรือกด Space ค้าง)">Pan <span class="kbd">H</span></button>
       <div class="sep"></div>
       <button id="btnZoomOut" class="tb-btn" title="ซูมออก (-)">−</button>
       <span id="zoomLabel" style="min-width:44px;text-align:center;font-weight:600;color:#cbd5f5;">100%</span>
       <button id="btnZoomIn" class="tb-btn" title="ซูมเข้า (+)">+</button>
       <button id="btnZoomFit" class="tb-btn" title="พอดีจอ (0)">Fit</button>
       <div class="sep"></div>
-      <button id="btnUndo" class="tb-btn" disabled title="ย้อนกลับ (Ctrl+Z)">↩️ Undo</button>
-      <button id="btnRedo" class="tb-btn" disabled title="ทำซ้ำ (Ctrl+Y)">↪️ Redo</button>
-      <button id="btnSave" class="tb-btn primary" title="บันทึก Label (Ctrl+S)">💾 Save</button>
+      <button id="btnUndo" class="tb-btn" disabled title="ย้อนกลับ (Ctrl+Z)">Undo</button>
+      <button id="btnRedo" class="tb-btn" disabled title="ทำซ้ำ (Ctrl+Y)">Redo</button>
+      <button id="btnSave" class="tb-btn primary" title="บันทึก Label (Ctrl+S)">Save</button>
     </div>
 
     <div class="top-group">
       <label class="toggle-pill" title="บันทึกอัตโนมัติเมื่อเปลี่ยนภาพ">
         <input type="checkbox" id="chkAutoSave" checked /> Auto-Save
       </label>
-      <button id="btnAiToggle" class="tb-btn" title="เปิด/ปิดแผง AI Auto Annotation">✨ AI Assist</button>
+      <button id="btnAiToggle" class="tb-btn" title="เปิด/ปิดแผง AI Auto Annotation">AI Assist</button>
     </div>
   </div>
 
@@ -294,14 +293,15 @@
     <div class="left-sidebar">
       <div class="sidebar-head">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-weight:700;font-size:12px;color:#cbd5f5;">🖼️ Images</span>
+          <span style="font-weight:600;font-size:13px;color:#cbd5f5;">Images</span>
           <span id="galleryCount" style="font-size:11px;color:var(--muted);">0</span>
         </div>
         <div class="filter-pills">
-          <div class="pill active" data-mode="all">ทั้งหมด</div>
-          <div class="pill" data-mode="unlabeled">ยังไม่ตี</div>
-          <div class="pill" data-mode="labeled">ตีแล้ว</div>
+          <div class="pill active" data-mode="all">All</div>
+          <div class="pill" data-mode="unlabeled">Unlabeled</div>
+          <div class="pill" data-mode="labeled">Labeled</div>
         </div>
+        <input id="gallerySearch" class="popup-input" type="text" placeholder="Search filename" style="width:100%;margin-top:6px;" />
       </div>
       <div id="galleryList" class="gallery-list"></div>
     </div>
@@ -309,19 +309,19 @@
     <!-- CENTER: ANNOTATION CANVAS -->
     <div id="canvasWrap" class="canvas-wrap">
       <canvas id="canvas"></canvas>
-      <div id="canvasEmpty" class="canvas-empty">เลือก Dataset หรือภาพทางซ้ายเพื่อเริ่มตีกรอบ</div>
+      <div id="canvasEmpty" class="canvas-empty">Select a dataset or an image to start annotating.</div>
 
       <!-- INSTANT CLASS SELECTION POPUP -->
       <div id="classPopup" class="class-popup">
         <div class="popup-title">
-          <span>เลือกหรือเพิ่มคลาส</span>
-          <span class="kbd">Enter ยืนยัน · Esc ยกเลิก</span>
+          <span>Choose or add a class</span>
+          <span class="kbd">Enter confirms · Esc cancels</span>
         </div>
-        <input id="popupSearch" class="popup-input" type="text" placeholder="ค้นหาหรือพิมพ์ชื่อคลาสใหม่..." autocomplete="off" />
+        <input id="popupSearch" class="popup-input" type="text" placeholder="Search or type a new class" autocomplete="off" />
         <div id="popupList" class="popup-list"></div>
         <div class="popup-actions">
-          <button id="popupConfirm" class="tb-btn primary" style="flex:1;justify-content:center;">ยืนยัน (Enter)</button>
-          <button id="popupCancel" class="tb-btn danger">ยกเลิก</button>
+          <button id="popupConfirm" class="tb-btn primary" style="flex:1;justify-content:center;">Confirm</button>
+          <button id="popupCancel" class="tb-btn danger">Cancel</button>
         </div>
       </div>
     </div>
@@ -329,7 +329,7 @@
     <!-- COLLAPSIBLE AI ASSIST DRAWER -->
     <div id="aiDrawer" class="ai-drawer">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-weight:700;font-size:13.5px;color:#e5ecff;">✨ AI Assist (Auto-Label)</span>
+        <span style="font-weight:600;font-size:14px;color:#e5ecff;">AI Assist</span>
         <button id="btnAiClose" class="icon-btn" title="ปิด">✕</button>
       </div>
       <div style="font-size:11.5px;color:var(--muted);line-height:1.45;">
@@ -338,6 +338,8 @@
       <div class="ai-field">
         <label>โมเดล (.pt)</label>
         <select id="aiModel" class="tb-select" style="width:100%;"></select>
+        <input id="aiImportFile" type="file" accept=".pt,application/octet-stream" hidden />
+        <button id="btnAiImport" type="button" class="tb-btn" style="width:100%;justify-content:center;margin-top:6px;">Import model</button>
       </div>
       <div class="ai-field">
         <label>Confidence: <strong id="aiConfVal">0.25</strong></label>
@@ -346,7 +348,7 @@
       <label class="toggle-pill" style="padding:0;">
         <input type="checkbox" id="aiAutoAdd" checked /> เพิ่มคลาสใหม่จากโมเดลอัตโนมัติ
       </label>
-      <button id="btnAiSingle" class="tb-btn" style="justify-content:center;">✨ ทำนายภาพนี้ (ทดลอง)</button>
+      <button id="btnAiSingle" class="tb-btn" style="justify-content:center;">ทำนายภาพนี้</button>
       <hr style="border:none;border-top:1px solid var(--border);" />
       <div class="ai-field">
         <label>ขอบเขตสำหรับรันทั้งชุด (Batch)</label>
@@ -358,7 +360,7 @@
       <label class="toggle-pill" style="padding:0;">
         <input type="checkbox" id="aiOverwrite" /> เขียนทับ Label เดิม (เมื่อเลือกทุกภาพ)
       </label>
-      <button id="btnAiBatch" class="tb-btn primary" style="justify-content:center;">🤖 ตีกรอบทั้งชุด (Batch)</button>
+      <button id="btnAiBatch" class="tb-btn primary" style="justify-content:center;">ตีกรอบทั้งชุด</button>
       <div id="aiStatus" class="ai-status"></div>
     </div>
 
@@ -366,23 +368,23 @@
     <div class="right-sidebar">
       <!-- SELECTED BOX INSPECTOR -->
       <div class="r-section">
-        <div class="r-title"><span>🎯 กรอบที่เลือก</span></div>
+        <div class="r-title"><span>กรอบที่เลือก</span></div>
         <div id="selectedBoxEmpty" style="font-size:12px;color:var(--muted);">คลิกกรอบบนภาพเพื่อแก้คลาส ย้าย หรือปรับขนาด</div>
         <div id="selectedBoxPanel" style="display:none;flex-direction:column;gap:7px;">
           <select id="selClassSelect" class="tb-select" style="width:100%;"></select>
           <div id="selCoords" style="font-size:11.5px;color:var(--muted);font-family:monospace;"></div>
-          <button id="btnDeleteBox" class="tb-btn danger" style="justify-content:center;">🗑️ ลบกรอบนี้ <span class="kbd">Del</span></button>
+          <button id="btnDeleteBox" class="tb-btn danger" style="justify-content:center;">ลบกรอบนี้ <span class="kbd">Del</span></button>
         </div>
       </div>
 
       <!-- CLASS MANAGER (SYNCED WITH data.yaml) -->
       <div class="r-section">
         <div class="r-title">
-          <span>🏷️ Class Manager (data.yaml)</span>
+          <span>Class Manager</span>
         </div>
         <div class="add-row">
           <input id="newClassInput" type="text" placeholder="เพิ่มคลาสใหม่..." />
-          <button id="btnAddClass" class="tb-btn primary" style="height:30px;padding:0 9px;">➕</button>
+          <button id="btnAddClass" class="tb-btn primary" style="height:32px;padding:0 12px;">Add</button>
         </div>
         <div id="classList" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;"></div>
       </div>
@@ -390,11 +392,11 @@
       <!-- BOX LAYERS IN CURRENT IMAGE -->
       <div class="r-section" style="flex:1;">
         <div class="r-title">
-          <span>📋 กรอบในภาพนี้</span>
+          <span>กรอบในภาพนี้</span>
           <span id="layerCount" style="color:#a5b4fc;">0</span>
         </div>
         <div id="layerList" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;"></div>
-        <button id="btnMarkNull" class="tb-btn" style="justify-content:center;margin-top:auto;">⬜ Mark as Null (ภาพว่างไม่มีวัตถุ)</button>
+        <button id="btnMarkNull" class="tb-btn" style="justify-content:center;margin-top:4px;">Mark as Null</button>
       </div>
     </div>
   </div>
@@ -402,9 +404,9 @@
   <!-- BOTTOM BAR -->
   <div class="bottombar">
     <div class="top-group">
-      <button id="btnPrev" class="tb-btn" style="height:26px;" title="ภาพก่อนหน้า (←)">◀ ก่อนหน้า</button>
+      <button id="btnPrev" class="tb-btn" title="Previous image (Left)">Previous</button>
       <span id="navCounter" style="min-width:68px;text-align:center;font-weight:700;">0 / 0</span>
-      <button id="btnNext" class="tb-btn" style="height:26px;" title="ภาพถัดไป (→)">ถัดไป ▶</button>
+      <button id="btnNext" class="tb-btn" title="Next image (Right)">Next</button>
       <div class="sep"></div>
       <span id="fileInfo" style="color:var(--muted);">—</span>
     </div>
@@ -1083,10 +1085,13 @@
   // ---------------- SIDEBAR RENDERERS ----------------
   function renderGallery() {
     const list = $('galleryList');
-    $('galleryCount').textContent = `${state.images.length} ภาพ`;
+    const q = (($('gallerySearch') && $('gallerySearch').value) || '').trim().toLowerCase();
     list.innerHTML = '';
     const encDs = encodeURIComponent(state.datasetId);
+    let shown = 0;
     state.images.forEach((im, idx) => {
+      if (q && !String(im.key).toLowerCase().includes(q)) return;
+      shown += 1;
       const card = document.createElement('div');
       card.className = 'thumb-card' + (idx === state.imgIndex ? ' active' : '');
       card.dataset.idx = idx;
@@ -1101,6 +1106,7 @@
       card.onclick = () => openImage(idx);
       list.appendChild(card);
     });
+    $('galleryCount').textContent = q ? `${shown}/${state.images.length}` : String(state.images.length);
   }
 
   function highlightActiveThumb() {
@@ -1133,7 +1139,7 @@
       };
 
       const btnRen = document.createElement('button');
-      btnRen.className = 'icon-btn'; btnRen.textContent = '✏️'; btnRen.title = 'เปลี่ยนชื่อคลาสใน data.yaml';
+      btnRen.className = 'icon-btn'; btnRen.textContent = 'Aa'; btnRen.title = 'เปลี่ยนชื่อคลาสใน data.yaml';
       btnRen.onclick = async ev => {
         ev.stopPropagation();
         const nv = prompt(`เปลี่ยนชื่อคลาส #${c.id}:`, c.name);
@@ -1155,7 +1161,7 @@
 
       if (c.count === 0) {
         const btnDel = document.createElement('button');
-        btnDel.className = 'icon-btn'; btnDel.textContent = '🗑️'; btnDel.title = 'ลบคลาสนี้ (ไม่มีกรอบใช้งาน — ปรับ ID คลาสที่เหลือให้อัตโนมัติ)';
+        btnDel.className = 'icon-btn'; btnDel.textContent = '×'; btnDel.title = 'ลบคลาสนี้ (ไม่มีกรอบใช้งาน — ปรับ ID คลาสที่เหลือให้อัตโนมัติ)';
         btnDel.onclick = async ev => {
           ev.stopPropagation();
           if (!confirm(`ลบคลาส "#${c.id} ${c.name}" ออกจาก data.yaml? (ID คลาสที่เหลือจะถูกจัดเรียงใหม่ให้ต่อเนื่องอัตโนมัติ)`)) return;
@@ -1272,6 +1278,7 @@
     };
   });
 
+  $('gallerySearch').addEventListener('input', () => renderGallery());
   $('btnPrev').onclick = () => openImage((state.imgIndex - 1 + state.images.length) % state.images.length);
   $('btnNext').onclick = () => openImage((state.imgIndex + 1) % state.images.length);
 
@@ -1330,6 +1337,33 @@
     d.classList.toggle('open', open);
     $('btnAiToggle').classList.toggle('active', open);
   }
+  $('btnAiImport').onclick = () => $('aiImportFile').click();
+  $('aiImportFile').onchange = async () => {
+    const file = $('aiImportFile').files && $('aiImportFile').files[0];
+    $('aiImportFile').value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pt')) {
+      setAiStatus('Choose a .pt file.');
+      return;
+    }
+    setAiStatus('Importing model...');
+    const body = new FormData();
+    body.append('file', file);
+    try {
+      const res = await fetch('/api/annotate/models/import', { method: 'POST', body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = data.detail;
+        const message = typeof detail === 'string' ? detail : 'Import failed.';
+        throw new Error(message);
+      }
+      await loadModels();
+      $('aiModel').value = data.path;
+      setAiStatus(`Imported ${file.name}. It is selected for AI Assist.`);
+    } catch (err) {
+      setAiStatus(err.message || 'Import failed.');
+    }
+  };
   $('btnAiToggle').onclick = () => toggleAiDrawer();
   $('btnAiClose').onclick = () => toggleAiDrawer(false);
   $('aiConf').oninput = e => { $('aiConfVal').textContent = Number(e.target.value).toFixed(2); };

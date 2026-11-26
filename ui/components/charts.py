@@ -1,4 +1,4 @@
-"""Dark-navy Matplotlib training charts (Loss, mAP, Precision, Recall)."""
+"""Light-workstation Matplotlib training charts (Loss, mAP, Precision, Recall)."""
 
 from __future__ import annotations
 
@@ -12,15 +12,15 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 def _styled_figure(title: str, ylabel: str):
     fig, ax = plt.subplots(figsize=(6.8, 3.3), dpi=110)
-    fig.patch.set_facecolor("#10192e")
-    ax.set_facecolor("#0b1224")
-    ax.set_title(title, color="#f1f5ff", fontsize=11, fontweight="bold", pad=10)
-    ax.set_xlabel("Epoch", color="#93a4cc", fontsize=9.5)
-    ax.set_ylabel(ylabel, color="#93a4cc", fontsize=9.5)
-    ax.tick_params(colors="#93a4cc", labelsize=8.5)
+    fig.patch.set_facecolor("#FFFFFF")
+    ax.set_facecolor("#FFFFFF")
+    ax.set_title(title, color="#18202C", fontsize=13, fontweight="medium", pad=10)
+    ax.set_xlabel("Epoch", color="#566173", fontsize=10)
+    ax.set_ylabel(ylabel, color="#566173", fontsize=10)
+    ax.tick_params(colors="#566173", labelsize=9)
     for spine in ax.spines.values():
-        spine.set_color("#25365e")
-    ax.grid(True, color="#1d2c4f", linestyle="--", linewidth=0.7, alpha=0.8)
+        spine.set_color("#D8DDE4")
+    ax.grid(True, color="#E6E9EE", linestyle="--", linewidth=0.7, alpha=1)
     return fig, ax
 
 
@@ -49,16 +49,16 @@ def _plot_series(
             transform=ax.transAxes,
             ha="center",
             va="center",
-            color="#7d90bc",
+            color="#566173",
             fontsize=10,
         )
     else:
         if y_zero_one:
             ax.set_ylim(-0.02, 1.05)
         ax.legend(
-            facecolor="#131e38",
-            edgecolor="#2a3d69",
-            labelcolor="#e5ecff",
+            facecolor="#FFFFFF",
+            edgecolor="#D8DDE4",
+            labelcolor="#18202C",
             fontsize=8.5,
             loc="best",
         )
@@ -74,8 +74,8 @@ def build_training_charts(series: dict[str, list[Any]]) -> tuple[Any, Any, Any, 
     loss_fig = _plot_series(
         epochs,
         [
-            ("Train Loss (box+cls+dfl)", series.get("train_loss", []), "#38bdf8"),
-            ("Val Loss (box+cls+dfl)", series.get("val_loss", []), "#fb923c"),
+            ("Train Loss (box+cls+dfl)", series.get("train_loss", []), "#1F56C9"),
+            ("Val Loss (box+cls+dfl)", series.get("val_loss", []), "#A86400"),
         ],
         title="Training & Validation Loss",
         ylabel="Total Loss",
@@ -85,8 +85,8 @@ def build_training_charts(series: dict[str, list[Any]]) -> tuple[Any, Any, Any, 
     map_fig = _plot_series(
         epochs,
         [
-            ("mAP50", series.get("map50", []), "#34d399"),
-            ("mAP50-95", series.get("map50_95", []), "#818cf8"),
+            ("mAP50", series.get("map50", []), "#0F7F63"),
+            ("mAP50-95", series.get("map50_95", []), "#1F56C9"),
         ],
         title="Mean Average Precision (mAP)",
         ylabel="Score (0–1)",
@@ -95,7 +95,7 @@ def build_training_charts(series: dict[str, list[Any]]) -> tuple[Any, Any, Any, 
 
     precision_fig = _plot_series(
         epochs,
-        [("Precision", series.get("precision", []), "#a78bfa")],
+        [("Precision", series.get("precision", []), "#1F56C9")],
         title="Precision",
         ylabel="Score (0–1)",
         y_zero_one=True,
@@ -103,7 +103,7 @@ def build_training_charts(series: dict[str, list[Any]]) -> tuple[Any, Any, Any, 
 
     recall_fig = _plot_series(
         epochs,
-        [("Recall", series.get("recall", []), "#2dd4bf")],
+        [("Recall", series.get("recall", []), "#0F7F63")],
         title="Recall",
         ylabel="Score (0–1)",
         y_zero_one=True,

@@ -37,7 +37,7 @@ def _aug_iframe_html(ds_id: str | None) -> str:
     q = f"?dataset={quote(ds_id)}" if ds_id else ""
     return (
         f'<iframe src="/aug-preview{q}" '
-        'style="width:100%;height:calc(100vh - 210px);min-height:620px;border:1px solid #233255;border-radius:10px;background:#0b1224;display:block;">'
+        'style="width:100%;height:calc(100vh - 220px);min-height:640px;border:1px solid #E2E8F0;border-radius:8px;background:#2A2E35;display:block;">'
         "</iframe>"
     )
 
@@ -52,27 +52,23 @@ def build_prepare_page(controller: AppController) -> dict[str, Any]:
         gr.HTML(
             render_page_header(
                 "Prepare",
-                "Step 1: Split annotated images into Train / Val / Test (prevents data leakage)  →  Step 2: Apply Offline Augmentation to Train set only.",
+                "Split annotated images, then augment the training set only.",
             )
         )
 
-        with gr.Row(elem_classes=["compact-row"]):
-            dataset_dropdown = gr.Dropdown(
-                label="Dataset",
-                choices=initial_choices,
-                value=initial_id,
-                interactive=True,
-                scale=7,
-            )
-            btn_refresh_ds = gr.Button("Refresh", variant="secondary", size="sm", scale=1)
-            btn_go_training = gr.Button("Next: Training", variant="primary", size="sm", scale=2)
+        dataset_dropdown = gr.Dropdown(
+            label="Dataset",
+            choices=initial_choices,
+            value=initial_id,
+            interactive=True,
+        )
+        summary_html = gr.HTML(value=init_summary)
 
-        with gr.Tabs() as prepare_tabs:
+        with gr.Tabs():
             # ---- Tab 1: Train / Val / Test Split
             with gr.Tab("Train / Val / Test Split", id="tab_split"):
                 with gr.Row(equal_height=False):
                     with gr.Column(scale=5):
-                        summary_html = gr.HTML(value=init_summary)
                         with gr.Row(elem_classes=["compact-row"]):
                             btn_revalidate = gr.Button("Re-validate", variant="secondary", size="sm", scale=2)
                             txt_rename_ds = gr.Textbox(placeholder="Rename dataset...", show_label=False, scale=3)
@@ -81,10 +77,7 @@ def build_prepare_page(controller: AppController) -> dict[str, Any]:
                         issues_md = gr.Markdown(value=init_issues)
 
                     with gr.Column(scale=7):
-                        gr.Markdown(
-                            "### Train / Val / Test Split\n"
-                            "Split original images **before** offline augmentation so the same image never leaks across Train and Validation."
-                        )
+                        gr.Markdown("Percentages must total 100. Split runs before augmentation so the same image is not in two sets.")
                         with gr.Row():
                             train_pct = gr.Number(label="Train %", value=70, minimum=0, maximum=100)
                             val_pct = gr.Number(label="Val %", value=20, minimum=0, maximum=100)
@@ -99,7 +92,7 @@ def build_prepare_page(controller: AppController) -> dict[str, Any]:
                         split_md = gr.Markdown("")
 
             # ---- Tab 2: Offline Augmentation (CiRA-style 60 FPS Live Studio)
-            with gr.Tab("Offline Augmentation", id="tab_augment"):
+            with gr.Tab("Augmentation", id="tab_augment"):
                 aug_preview_html = gr.HTML(value=_aug_iframe_html(initial_id))
 
         # ---- Handlers
@@ -183,11 +176,6 @@ def build_prepare_page(controller: AppController) -> dict[str, Any]:
             inputs=[dataset_dropdown],
             outputs=[summary_html, issues_md, aug_preview_html],
         )
-        btn_refresh_ds.click(
-            fn=_refresh_page,
-            inputs=[dataset_dropdown],
-            outputs=[dataset_dropdown, summary_html, issues_md, aug_preview_html],
-        )
         btn_revalidate.click(fn=_handle_revalidate, inputs=[dataset_dropdown], outputs=[summary_html, issues_md])
         btn_rename_ds.click(
             fn=_handle_rename_ds,
@@ -208,7 +196,6 @@ def build_prepare_page(controller: AppController) -> dict[str, Any]:
     return {
         "container": container,
         "dataset_dropdown": dataset_dropdown,
-        "btn_go_training": btn_go_training,
         "refresh_fn": _refresh_page,
         "refresh_inputs": [dataset_dropdown],
         "refresh_outputs": [dataset_dropdown, summary_html, issues_md, aug_preview_html],

@@ -8,9 +8,9 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 100%; height: 100%;
-    background: #0b1224; color: #e2e8f0;
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-    font-size: 12.5px; overflow: hidden;
+    background: #F4F6F8; color: #18202C;
+    font-family: 'Inter', 'Noto Sans Thai', system-ui, sans-serif;
+    font-size: 14px; overflow: hidden;
   }
   .layout {
     display: grid;
@@ -20,8 +20,8 @@
   }
   /* LEFT PANEL: Transform cards (CiRA-style) */
   .left-panel {
-    background: #0f172a;
-    border-right: 1px solid #233255;
+    background: #FFFFFF;
+    border-right: 1px solid #D8DDE4;
     padding: 10px;
     overflow-y: auto;
     display: flex;
@@ -29,13 +29,13 @@
     gap: 8px;
   }
   .card {
-    background: #131f3a;
-    border: 1px solid #25365e;
+    background: #F4F6F8;
+    border: 1px solid #D8DDE4;
     border-radius: 8px;
     padding: 8px 10px;
     transition: border-color .15s;
   }
-  .card.active { border-color: #6344f5; }
+  .card.active { border-color: #1F56C9; background: #FFFFFF; }
   .card-head {
     display: flex;
     justify-content: space-between;
@@ -47,21 +47,21 @@
     align-items: center;
     gap: 6px;
     font-weight: 600;
-    color: #f1f5ff;
+    color: #18202C;
     cursor: pointer;
     user-select: none;
   }
   .card-head input[type="checkbox"] {
-    accent-color: #7c5cff;
+    accent-color: #1F56C9;
     width: 14px; height: 14px;
     cursor: pointer;
   }
   .val-pill {
-    font-size: 11px;
-    color: #a5b4fc;
-    background: #0b1224;
-    border: 1px solid #25365e;
-    border-radius: 5px;
+    font-size: 12px;
+    color: #1F56C9;
+    background: #EAF0FB;
+    border: 1px solid #C9D8F4;
+    border-radius: 4px;
     padding: 1px 6px;
     font-variant-numeric: tabular-nums;
   }
@@ -81,28 +81,29 @@
     min-width: 0;
   }
   .num-field span {
-    color: #94a3c8;
-    font-size: 11px;
+    color: #566173;
+    font-size: 12px;
     white-space: nowrap;
   }
   .num-field input[type="number"] {
     width: 100%;
     min-width: 0;
-    background: #0b1224;
-    border: 1px solid #2b3f6b;
-    border-radius: 5px;
-    color: #f1f5ff;
-    padding: 3px 5px;
-    font-size: 12px;
+    height: 32px;
+    background: #FFFFFF;
+    border: 1px solid #D8DDE4;
+    border-radius: 6px;
+    color: #18202C;
+    padding: 3px 6px;
+    font-size: 13px;
     font-variant-numeric: tabular-nums;
   }
   .num-field input[type="number"]:focus {
     outline: none;
-    border-color: #7c5cff;
+    border-color: #1F56C9;
   }
   input[type="range"] {
     width: 100%;
-    accent-color: #7c5cff;
+    accent-color: #1F56C9;
     cursor: grab;
     height: 6px;
   }
@@ -112,7 +113,7 @@
   .right-panel {
     display: flex;
     flex-direction: column;
-    background: #080d1a;
+    background: #F4F6F8;
     padding: 10px 12px;
     gap: 10px;
     min-width: 0;
@@ -122,41 +123,43 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #0f172a;
-    border: 1px solid #233255;
+    background: #FFFFFF;
+    border: 1px solid #D8DDE4;
     border-radius: 8px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     gap: 8px;
   }
-  .top-info { font-size: 12px; color: #cbd5f5; }
-  .top-info strong { color: #f1f5ff; }
+  .top-info { font-size: 13px; color: #566173; }
+  .top-info strong { color: #18202C; }
   .btn-group { display: flex; gap: 6px; }
   .btn {
-    background: #1a2748;
-    color: #e2e8f0;
-    border: 1px solid #2b3f6b;
+    height: 34px;
+    background: #FFFFFF;
+    color: #18202C;
+    border: 1px solid #D8DDE4;
     border-radius: 6px;
-    padding: 5px 11px;
-    font-size: 12px;
-    font-weight: 500;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background .12s;
   }
-  .btn:hover { background: #263968; }
+  .btn:hover { background: #F4F6F8; }
+  .btn:focus-visible { outline: 2px solid #1F56C9; outline-offset: 2px; }
   .btn-primary {
-    background: linear-gradient(90deg, #6344f5, #7c5cff);
-    border-color: #7c5cff;
+    height: 40px;
+    background: #1F56C9;
+    border-color: #1F56C9;
     color: #ffffff;
     font-weight: 600;
   }
-  .btn-primary:hover { filter: brightness(1.08); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:hover { background: #1A4BB0; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 
   .canvas-stage {
     flex: 1;
     min-height: 0;
-    background: #050914;
-    border: 1px solid #233255;
+    background: #2A2E35;
+    border: 1px solid #D8DDE4;
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -177,8 +180,8 @@
   }
 
   .bottom-bar {
-    background: #0f172a;
-    border: 1px solid #233255;
+    background: #FFFFFF;
+    border: 1px solid #D8DDE4;
     border-radius: 8px;
     padding: 9px 12px;
     display: flex;
@@ -196,27 +199,33 @@
     flex-direction: column;
     gap: 3px;
   }
-  .field-col span { font-size: 11px; color: #94a3c8; }
+  .field-col span { font-size: 12px; color: #566173; }
   .field-col input {
-    background: #0b1224;
-    border: 1px solid #2b3f6b;
+    height: 40px;
+    background: #FFFFFF;
+    border: 1px solid #D8DDE4;
     border-radius: 6px;
-    color: #f1f5ff;
-    padding: 5px 8px;
-    font-size: 12px;
+    color: #18202C;
+    padding: 6px 8px;
+    font-size: 14px;
   }
+  .field-col input:focus { outline: none; border-color: #1F56C9; }
   .status-line {
-    font-size: 12px;
-    color: #93c5fd;
+    font-size: 13px;
+    color: #566173;
     min-height: 16px;
   }
-  .status-line.ok { color: #4ade80; }
-  .status-line.err { color: #f87171; }
+  .status-line.ok { color: #0F7F63; }
+  .status-line.err { color: #C42F2A; }
 
   /* Subtle dark scrollbar */
   .left-panel::-webkit-scrollbar { width: 6px; }
-  .left-panel::-webkit-scrollbar-track { background: #0b1224; }
-  .left-panel::-webkit-scrollbar-thumb { background: #263968; border-radius: 3px; }
+  .left-panel::-webkit-scrollbar-track { background: #F4F6F8; }
+  .left-panel::-webkit-scrollbar-thumb { background: #C5CDD6; border-radius: 3px; }
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: 220px 1fr; }
+    .left-panel { border-right: 0; border-bottom: 1px solid #D8DDE4; }
+  }
 </style>
 </head>
 <body>
@@ -254,7 +263,7 @@
           <span>New Dataset Name (optional)</span>
           <input type="text" id="inNewName" placeholder="e.g. board_aug_v1" />
         </div>
-        <button class="btn btn-primary" id="btnApply" style="height:30px;">Apply Augmentation</button>
+        <button class="btn btn-primary" id="btnApply">Apply Augmentation</button>
       </div>
       <div class="status-line" id="statusLine">Drag any slider on the left to preview continuously. Validation and Test sets remain unchanged.</div>
     </div>
@@ -572,6 +581,16 @@ document.getElementById("btnReset").addEventListener("click", () => {
   scheduleDraw();
 });
 
+function formatApiError(data) {
+  const detail = data && data.detail;
+  if (!detail) return "Augmentation failed";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => (item && item.msg) ? item.msg : JSON.stringify(item)).join("; ");
+  }
+  return JSON.stringify(detail);
+}
+
 document.getElementById("btnApply").addEventListener("click", async () => {
   if (!datasetId) {
     statusLine.className = "status-line err";
@@ -606,7 +625,7 @@ document.getElementById("btnApply").addEventListener("click", async () => {
       }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Augmentation failed");
+    if (!res.ok) throw new Error(formatApiError(data));
     const c = data.counts;
     statusLine.className = "status-line ok";
     statusLine.textContent = `Created "${data.dataset_name}" — Train: ${c.train_original} + ${c.train_augmented} = ${c.train_original + c.train_augmented} images (Val: ${c.val}, Test: ${c.test} untouched). Refresh Dataset dropdown to select it.`;

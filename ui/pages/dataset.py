@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,10 +24,61 @@ def _dataset_choices(controller: AppController) -> list[tuple[str, str]]:
     for ds in controller.list_datasets():
         if ds.total_images <= 0:
             continue
-        icon = "✅" if ds.is_valid else "📝"
-        label = f"{icon} {ds.dataset_name} ({ds.total_images} ภาพ, {len(ds.class_names)} คลาส) [{ds.dataset_id}]"
+        status = "Ready" if ds.is_valid else "Draft"
+        label = f"{ds.dataset_name} ({ds.total_images} images, {len(ds.class_names)} classes — {status})"
         choices.append((label, ds.dataset_id))
     return choices
+
+
+def _split_counts(ds: DatasetValidationReport) -> str:
+    parts = []
+    for name in ("train", "val", "test"):
+        stats = ds.splits.get(name)
+        parts.append(f"{name[0].upper()} {stats.image_count if stats else 0}")
+    return " / ".join(parts)
+
+
+def _modified(ds: DatasetValidationReport) -> str:
+    path = Path(ds.dataset_root)
+    if not path.exists():
+        return "—"
+    return datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+
+
+def _render_library(controller: AppController, query: str, status: str) -> str:
+    needle = (query or "").strip().lower()
+    rows: list[str] = []
+    for ds in controller.list_datasets():
+        if ds.total_images <= 0:
+            continue
+        state = "Ready" if ds.is_valid else "Draft"
+        if status in {"Ready", "Draft"} and state != status:
+            continue
+        if needle and needle not in ds.dataset_name.lower():
+            continue
+        annotated = sum(sp.label_count for sp in ds.splits.values()) or ds.total_labels
+        rows.append(
+            "<tr>"
+            f"<td>{html.escape(ds.dataset_name)}</td>"
+            f"<td>{ds.total_images:,}</td>"
+            f"<td>{annotated:,}</td>"
+            f"<td>{len(ds.class_names)}</td>"
+            f"<td>{html.escape(_split_counts(ds))}</td>"
+            f"<td>{_modified(ds)}</td>"
+            f"<td>{state}</td>"
+            "</tr>"
+        )
+    body = "".join(rows) if rows else (
+        '<tr><td colspan="7" class="empty-note">No datasets match this filter. Use Import Dataset to add images or a YOLO zip.</td></tr>'
+    )
+    return (
+        '<div class="studio-card" style="padding:0;overflow:auto;">'
+        '<table class="data-table"><thead><tr>'
+        "<th>Dataset</th><th>Images</th><th>Annotated</th><th>Classes</th><th>Train / Val / Test</th><th>Modified</th><th>Status</th>"
+        f"</tr></thead><tbody>{body}</tbody></table></div>"
+        '<div class="empty-note" style="margin-top:8px;">Open, rename, class edits, and diagnostics use the dataset selected above. '
+        "Duplicate and delete are not available.</div>"
+    )
 
 
 def _format_summary(report: DatasetValidationReport | None) -> tuple[str, str, str]:
@@ -60,15 +112,22 @@ def _diag_markdown(d: dict[str, Any]) -> str:
         more = f"\n- ... และอีก {len(items) - limit} รายการ" if len(items) > limit else ""
         return shown + more
 
-    lines = [f"#### ผลการวินิจฉัย ({d['total_images']} ภาพ)", ""]
-    lines.append(f"- **ภาพซ้ำ:** {len(d['duplicates'])} กลุ่ม")
-    lines.append(f"- **ภาพเสีย:** {len(d['corrupt'])} ภาพ")
-    lines.append(f"- **ภาพที่ยังไม่ตีกรอบ:** {len(d['missing_labels'])} ภาพ")
-    lines.append(f"- **ไฟล์ Label กำพร้า:** {len(d['orphan_labels'])} ไฟล์")
-    lines.append(f"- **Label รูปแบบผิด:** {len(d['invalid_labels'])} ไฟล์")
-    lines.append(f"- **คลาสที่ยังไม่มีกรอบ:** {', '.join(d['unused_classes']) or 'ไม่มี'}")
+    lines = [
+        "| Check | Count | Severity |",
+        "|---|---:|---|",
+        f"| Duplicate groups | {len(d['duplicates'])} | {'Warning' if d['duplicates'] else 'OK'} |",
+        f"| Corrupted images | {len(d['corrupt'])} | {'Error' if d['corrupt'] else 'OK'} |",
+        f"| Missing labels | {len(d['missing_labels'])} | {'Warning' if d['missing_labels'] else 'OK'} |",
+        f"| Orphan label files | {len(d['orphan_labels'])} | {'Warning' if d['orphan_labels'] else 'OK'} |",
+        f"| Invalid label files | {len(d['invalid_labels'])} | {'Error' if d['invalid_labels'] else 'OK'} |",
+        f"| Classes with no boxes | {len(d['unused_classes'])} | {'Warning' if d['unused_classes'] else 'OK'} |",
+        "",
+        f"Images scanned: **{d['total_images']}**.",
+    ]
+    if d["unused_classes"]:
+        lines.append("Unused classes: " + ", ".join(f"`{html.escape(name)}`" for name in d["unused_classes"]))
     if d["corrupt"]:
-        lines.append(f"\n**รายการภาพเสีย:**\n{_listing(d['corrupt'])}")
+        lines.append(f"\n**Corrupted images:**\n{_listing(d['corrupt'])}")
     if d["class_counts"]:
         lines.append("\n| Split | คลาส | จำนวนกรอบ |\n|---|---|---:|")
         for split in SPLITS:
@@ -92,13 +151,12 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
     with gr.Column(visible=False) as container:
         gr.HTML(
             render_page_header(
-                "Dataset",
-                "Import images or labeled YOLO datasets, review dataset health, and manage classes before annotating.",
+                "Datasets",
+                "Review the library or import images and YOLO labels.",
             )
         )
 
-        # Single shared Dataset selector for Dataset Management
-        with gr.Row():
+        with gr.Row(elem_classes=["compact-row"]):
             dataset_dropdown = gr.Dropdown(
                 label="Dataset",
                 choices=initial_choices,
@@ -106,11 +164,64 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
                 interactive=True,
                 scale=6,
             )
-            btn_open_annotate = gr.Button("Open Annotator", variant="primary", scale=2)
-            btn_demo = gr.Button("Create Demo Dataset", variant="secondary", scale=2)
+            btn_open_annotate = gr.Button("Open", variant="primary", scale=1)
 
-        with gr.Tabs() as ds_tabs:
-            # ======================================================== Tab 1: Import
+        with gr.Tabs(selected="tab_library" if initial_choices else "tab_import"):
+            with gr.Tab("Dataset Library", id="tab_library"):
+                with gr.Row(elem_classes=["compact-row"]):
+                    library_query = gr.Textbox(placeholder="Search datasets", show_label=False, scale=5)
+                    library_status = gr.Dropdown(
+                        choices=["All", "Ready", "Draft"],
+                        value="All",
+                        label="Status",
+                        scale=2,
+                    )
+                library_html = gr.HTML(value=_render_library(controller, "", "All"))
+                with gr.Row(equal_height=False):
+                    with gr.Column(scale=6):
+                        summary_html = gr.HTML(value=init_summary)
+                        with gr.Row(elem_classes=["compact-row"]):
+                            btn_revalidate = gr.Button("Re-validate", variant="secondary", size="sm", scale=2)
+                            txt_rename_ds = gr.Textbox(placeholder="New dataset name", show_label=False, scale=3)
+                            btn_rename_ds = gr.Button("Rename", size="sm", scale=1)
+                        rename_ds_msg = gr.Markdown("")
+                        issues_md = gr.Markdown(value=init_issues)
+                    with gr.Column(scale=6):
+                        gr.Markdown("**Classes**")
+                        classes_df = gr.Dataframe(
+                            headers=["ID", "Class Name", "Boxes"],
+                            datatype=["number", "str", "number"],
+                            type="array",
+                            column_count=3,
+                            row_count=0,
+                            interactive=True,
+                            value=_class_rows(controller, initial_id),
+                        )
+                        with gr.Row():
+                            btn_save_names = gr.Button("Save Class Names", size="sm")
+                            num_remove_id = gr.Number(label="Unused class ID", precision=0)
+                            btn_remove_class = gr.Button("Delete Class", variant="stop", size="sm")
+                        class_msg = gr.Markdown("")
+
+                with gr.Accordion("Diagnostics and labels", open=False):
+                    with gr.Row():
+                        with gr.Column(scale=5):
+                            btn_diag = gr.Button("Run Diagnostics", variant="secondary")
+                            diag_md = gr.Markdown("")
+                        with gr.Column(scale=7):
+                            with gr.Row():
+                                with gr.Column():
+                                    btn_export_lbl = gr.Button("Export Labels (ZIP)", size="sm")
+                                    export_lbl_file = gr.File(label="Exported Labels", interactive=False)
+                                    export_lbl_msg = gr.Markdown("")
+                                with gr.Column():
+                                    import_lbl_file = gr.File(label="Import Labels (.zip)", file_types=[".zip"], type="filepath")
+                                    chk_import_ow = gr.Checkbox(label="Overwrite existing labels", value=False)
+                                    btn_import_lbl = gr.Button("Import Labels", size="sm")
+                                    import_lbl_msg = gr.Markdown("")
+                    with gr.Accordion("Dataset structure", open=False):
+                        structure_md = gr.Markdown(value=init_tree, elem_classes=["tree-box"])
+
             with gr.Tab("Import Dataset", id="tab_import"):
                 import_mode = gr.Radio(
                     label="Import Mode",
@@ -166,52 +277,9 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
                         map_preview_md = gr.Markdown("")
                         btn_map_commit = gr.Button("Confirm Mapping", variant="primary")
 
-            # ======================================================== Tab 2: Manage & Diagnostics
-            with gr.Tab("Manage & Diagnostics", id="tab_manage"):
-                with gr.Row(equal_height=False):
-                    with gr.Column(scale=6):
-                        summary_html = gr.HTML(value=init_summary)
-                        with gr.Row(elem_classes=["compact-row"]):
-                            btn_revalidate = gr.Button("Re-validate", variant="secondary", size="sm", scale=2)
-                            txt_rename_ds = gr.Textbox(placeholder="New dataset name...", show_label=False, scale=3)
-                            btn_rename_ds = gr.Button("Rename", size="sm", scale=1)
-                        rename_ds_msg = gr.Markdown("")
-                        issues_md = gr.Markdown(value=init_issues)
-                    with gr.Column(scale=6):
-                        gr.Markdown("#### Class Manager")
-                        classes_df = gr.Dataframe(
-                            headers=["ID", "Class Name", "Boxes"],
-                            datatype=["number", "str", "number"],
-                            type="array",
-                            column_count=3,
-                            row_count=0,
-                            interactive=True,
-                            value=_class_rows(controller, initial_id),
-                        )
-                        with gr.Row():
-                            btn_save_names = gr.Button("Save Class Names", size="sm")
-                            num_remove_id = gr.Number(label="Unused Class ID to Delete", precision=0)
-                            btn_remove_class = gr.Button("Delete Class", variant="stop", size="sm")
-                        class_msg = gr.Markdown("")
-
-                with gr.Accordion("Diagnostics, Label Import/Export & Folder Structure", open=False):
-                    with gr.Row():
-                        with gr.Column(scale=5):
-                            btn_diag = gr.Button("Run Diagnostics", variant="secondary")
-                            diag_md = gr.Markdown("")
-                        with gr.Column(scale=7):
-                            with gr.Row():
-                                with gr.Column():
-                                    btn_export_lbl = gr.Button("Export Labels (ZIP)", size="sm")
-                                    export_lbl_file = gr.File(label="Exported Labels", interactive=False)
-                                    export_lbl_msg = gr.Markdown("")
-                                with gr.Column():
-                                    import_lbl_file = gr.File(label="Import Labels (.zip)", file_types=[".zip"], type="filepath")
-                                    chk_import_ow = gr.Checkbox(label="Overwrite existing labels", value=False)
-                                    btn_import_lbl = gr.Button("Import Labels", size="sm")
-                                    import_lbl_msg = gr.Markdown("")
-                    with gr.Accordion("Dataset Structure", open=False):
-                        structure_md = gr.Markdown(value=init_tree, elem_classes=["tree-box"])
+                with gr.Accordion("Development", open=False):
+                    gr.Markdown("Creates a small synthetic dataset for trying the workflow.")
+                    btn_demo = gr.Button("Create Demo Dataset", variant="secondary", size="sm")
 
         # ================================================================ handlers
         def _switch_import_mode(mode: str):
@@ -230,7 +298,7 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
                 choices = _dataset_choices(controller)
                 msg = (
                     f"✅ นำเข้าภาพ **{report.total_images} ภาพ** เรียบร้อย (`{report.dataset_name}`)\n\n"
-                    "👉 กดปุ่ม **✏️ เปิดหน้าตีกรอบ (Annotate)** ด้านบน หรือเลือกเมนู **✏️ Annotate** ทางซ้ายเพื่อเริ่มตีกรอบได้เลย"
+                    "กด **Open Annotator** ด้านบนเพื่อเริ่มตีกรอบ"
                 )
                 return msg, gr.update(choices=choices, value=report.dataset_id)
             except Exception as exc:
@@ -428,13 +496,23 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
             except Exception as exc:
                 return f"❌ {exc}"
 
-        def _refresh_page(current_ds_id: str | None):
+        def _paint_library(query: str, status: str):
+            return _render_library(controller, query, status)
+
+        def _refresh_page(current_ds_id: str | None, query: str, status: str):
             choices = _dataset_choices(controller)
             valid_ids = {cid for _, cid in choices}
             selected = current_ds_id if current_ds_id in valid_ids else (choices[0][1] if choices else None)
             report = controller.get_dataset(selected) if selected else None
             s_html, i_md, t_md = _format_summary(report)
-            return gr.update(choices=choices, value=selected), s_html, i_md, t_md, _class_rows(controller, selected)
+            return (
+                gr.update(choices=choices, value=selected),
+                s_html,
+                i_md,
+                t_md,
+                _class_rows(controller, selected),
+                _render_library(controller, query, status),
+            )
 
         # ---- wiring
         import_mode.change(fn=_switch_import_mode, inputs=[import_mode], outputs=[mode1_box, mode2_box])
@@ -442,20 +520,24 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
             fn=_handle_mode1,
             inputs=[m1_files, m1_name, m1_classes],
             outputs=[m1_msg, dataset_dropdown],
-        )
+        ).then(fn=_paint_library, inputs=[library_query, library_status], outputs=[library_html])
         btn_m2_upload.click(
             fn=_handle_mode2,
             inputs=[m2_files, m2_name],
             outputs=[m2_msg, dataset_dropdown, mapping_box, stage_state, map_img_dir, map_lbl_dir, map_classes, map_preview_md],
-        )
+        ).then(fn=_paint_library, inputs=[library_query, library_status], outputs=[library_html])
         map_img_dir.change(fn=_handle_map_preview, inputs=[stage_state, map_img_dir, map_lbl_dir], outputs=[map_preview_md])
         map_lbl_dir.change(fn=_handle_map_preview, inputs=[stage_state, map_img_dir, map_lbl_dir], outputs=[map_preview_md])
         btn_map_commit.click(
             fn=_handle_map_commit,
             inputs=[stage_state, m2_name, map_img_dir, map_lbl_dir, map_classes],
             outputs=[m2_msg, dataset_dropdown, mapping_box, stage_state],
+        ).then(fn=_paint_library, inputs=[library_query, library_status], outputs=[library_html])
+        btn_demo.click(fn=_handle_create_demo, outputs=[dataset_dropdown, m1_msg]).then(
+            fn=_paint_library, inputs=[library_query, library_status], outputs=[library_html],
         )
-        btn_demo.click(fn=_handle_create_demo, outputs=[dataset_dropdown, m1_msg])
+        library_query.change(fn=_paint_library, inputs=[library_query, library_status], outputs=[library_html])
+        library_status.change(fn=_paint_library, inputs=[library_query, library_status], outputs=[library_html])
 
         dataset_dropdown.change(fn=_handle_ds_change, inputs=[dataset_dropdown], outputs=[summary_html, issues_md, structure_md, classes_df])
         btn_revalidate.click(fn=_handle_revalidate, inputs=[dataset_dropdown], outputs=[summary_html, issues_md, structure_md])
@@ -471,6 +553,6 @@ def build_dataset_page(controller: AppController) -> dict[str, Any]:
         "dataset_dropdown": dataset_dropdown,
         "btn_open_annotate": btn_open_annotate,
         "refresh_fn": _refresh_page,
-        "refresh_inputs": [dataset_dropdown],
-        "refresh_outputs": [dataset_dropdown, summary_html, issues_md, structure_md, classes_df],
+        "refresh_inputs": [dataset_dropdown, library_query, library_status],
+        "refresh_outputs": [dataset_dropdown, summary_html, issues_md, structure_md, classes_df, library_html],
     }

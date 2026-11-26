@@ -39,9 +39,11 @@
 ## วิธีเปิดใช้งาน
 
 ### 1. บน Google Colab (แนะนำ)
-1. เปิดไฟล์ `notebooks/AI_Training_Studio_Colab.ipynb` บน Google Colab
-2. ไปที่ **Runtime → Change runtime type** แล้วเลือก GPU (`T4` หรือ `L4`)
-3. รันเซลล์ตามลำดับ 1 → 4 แล้วเปิดลิงก์ Gradio ที่ได้
+แต่ละคนเปิดลิงก์นี้ด้วยบัญชี Colab ของตัวเอง แล้วเลือก GPU จาก **Runtime → Change runtime type** จากนั้นกด **Runtime → Run all**
+
+https://colab.research.google.com/github/Atiruj2911/AI_Colab/blob/main/notebooks/AI_Training_Studio_Colab.ipynb
+
+โน้ตบุ๊กจะดึงโค้ดล่าสุดจาก GitHub มาไว้บน runtime ของคนนั้น ข้อมูลเทรนอยู่คนละดิสก์ ไม่ปนกัน เมื่อมีเวอร์ชันใหม่ ให้ Restart session แล้ว Run all อีกครั้ง
 
 ### 2. บนเครื่อง Local (Windows / Linux / macOS)
 ```bash

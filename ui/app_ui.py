@@ -14,17 +14,20 @@ from ui.components.common import render_job_sidebar_pill
 from ui.pages.annotate import build_annotate_page
 from ui.pages.dataset import build_dataset_page
 from ui.pages.home import build_home_page
+from ui.pages.models import build_models_page
 from ui.pages.prepare import build_prepare_page
-from ui.pages.training_workspace import build_training_workspace_page
+from ui.pages.settings import build_settings_page
+from ui.pages.training_workspace import build_training_workspace_page, reconnect_needed
 from ui.theme import STUDIO_CSS, build_studio_theme
 
-# Linear Phase 1 workflow navigation: Home -> Dataset -> Annotate -> Prepare -> Training
 PAGE_KEYS = [
     ("home", "Home"),
-    ("dataset", "Dataset"),
-    ("annotate", "Annotate"),
+    ("dataset", "Datasets"),
+    ("annotate", "Annotation"),
     ("prepare", "Prepare"),
     ("training", "Training"),
+    ("models", "Models"),
+    ("settings", "Settings"),
 ]
 
 
@@ -52,7 +55,7 @@ def build_app(controller: AppController) -> tuple[gr.Blocks, gr.Theme, str]:
 
         with gr.Row(equal_height=False, elem_classes=["studio-shell"]):
             # Left Fixed Sidebar
-            with gr.Column(scale=0, min_width=210, elem_classes=["studio-sidebar"]):
+            with gr.Column(scale=0, min_width=216, elem_classes=["studio-sidebar"]):
                 gr.HTML(
                     f"""
                     <div class="studio-brand">
@@ -68,11 +71,12 @@ def build_app(controller: AppController) -> tuple[gr.Blocks, gr.Theme, str]:
                 nav_buttons: dict[str, gr.Button] = {}
                 for key, label in PAGE_KEYS:
                     cls = ["nav-btn-active"] if key == "home" else ["nav-btn"]
-                    nav_buttons[key] = gr.Button(label, elem_classes=cls)
+                    nav_buttons[key] = gr.Button(label, elem_classes=cls, elem_id=f"nav-{key}")
 
                 initial_snap = controller.get_monitor_snapshot()
                 sidebar_job_html = gr.HTML(
                     value=render_job_sidebar_pill(initial_snap["job"], initial_snap["alive"]),
+                    elem_classes=["nav-status"],
                 )
 
             # Right Main Content Area
@@ -83,6 +87,8 @@ def build_app(controller: AppController) -> tuple[gr.Blocks, gr.Theme, str]:
                     "annotate": build_annotate_page(controller),
                     "prepare": build_prepare_page(controller),
                     "training": build_training_workspace_page(controller),
+                    "models": build_models_page(controller),
+                    "settings": build_settings_page(controller),
                 }
 
         # Live polling timer: updates sidebar pill + Training Monitor (Left side ONLY, NEVER touches Testing!)
@@ -119,25 +125,6 @@ def build_app(controller: AppController) -> tuple[gr.Blocks, gr.Theme, str]:
                     outputs=page_info["refresh_outputs"],
                 )
 
-        # Home workflow navigation shortcuts
-        for btn_name, target_key in (
-            ("btn_go_dataset", "dataset"),
-            ("btn_go_annotate", "annotate"),
-            ("btn_go_prepare", "prepare"),
-            ("btn_go_training", "training"),
-        ):
-            evt = pages["home"][btn_name].click(
-                fn=lambda k=target_key: _switch_page(k),
-                outputs=switch_outputs,
-            )
-            target_info = pages[target_key]
-            if "refresh_fn" in target_info:
-                evt.then(
-                    fn=target_info["refresh_fn"],
-                    inputs=target_info.get("refresh_inputs", []),
-                    outputs=target_info["refresh_outputs"],
-                )
-
         # Dataset -> Open Annotate Workspace button
         def _open_annotate_for_dataset(selected_ds: str | None):
             if selected_ds:
@@ -154,45 +141,38 @@ def build_app(controller: AppController) -> tuple[gr.Blocks, gr.Theme, str]:
             outputs=pages["annotate"]["refresh_outputs"],
         )
 
-        # Annotate -> Next: Prepare (Split & Augment)
-        pages["annotate"]["btn_go_prepare"].click(
-            fn=lambda: _switch_page("prepare"),
+        def _open_model_test(run_id: str | None, dataset_id: str | None):
+            if run_id:
+                controller.session_service.update_session(active_run_id=run_id)
+            return pages["training"]["refresh_fn"](dataset_id, run_id)
+
+        pages["models"]["btn_test"].click(
+            fn=lambda: _switch_page("training"),
             outputs=switch_outputs,
         ).then(
-            fn=pages["prepare"]["refresh_fn"],
-            inputs=pages["prepare"]["refresh_inputs"],
-            outputs=pages["prepare"]["refresh_outputs"],
-        )
-
-        # Prepare -> Next: Training
-        def _open_training_for_dataset(selected_ds: str | None):
-            if selected_ds:
-                controller.session_service.update_session(active_dataset_id=selected_ds)
-            return _switch_page("training")
-
-        pages["prepare"]["btn_go_training"].click(
-            fn=_open_training_for_dataset,
-            inputs=[pages["prepare"]["dataset_dropdown"]],
-            outputs=switch_outputs,
-        ).then(
-            fn=pages["training"]["refresh_fn"],
-            inputs=pages["training"]["refresh_inputs"],
+            fn=_open_model_test,
+            inputs=[pages["models"]["run_dd"], pages["training"]["refresh_inputs"][0]],
             outputs=pages["training"]["refresh_outputs"],
         )
 
-        # Live polling tick: updates sidebar job pill + Training Monitor panel ONLY (never auto-updates Testing!)
+        # Live polling tick: sidebar status + Training Monitor only (never auto-updates Testing).
         def _on_timer_tick(current_page: str, selected_run: str | None):
             snap = controller.get_monitor_snapshot(run_id=selected_run or None)
             pill = render_job_sidebar_pill(snap["job"], snap["alive"])
+            reconnect = gr.update(visible=reconnect_needed(snap))
             if current_page == "training":
                 mon_vals = pages["training"]["monitor_refresh_fn"](selected_run)
-                return [pill, *mon_vals]
-            return [pill, *[gr.update() for _ in pages["training"]["monitor_refresh_outputs"]]]
+                return [pill, reconnect, *mon_vals]
+            return [pill, reconnect, *[gr.update() for _ in pages["training"]["monitor_refresh_outputs"]]]
 
         poll_timer.tick(
             fn=_on_timer_tick,
             inputs=[active_page_state, pages["training"]["run_selector"]],
-            outputs=[sidebar_job_html, *pages["training"]["monitor_refresh_outputs"]],
+            outputs=[
+                sidebar_job_html,
+                pages["training"]["btn_reconnect"],
+                *pages["training"]["monitor_refresh_outputs"],
+            ],
         )
 
     return demo, theme, STUDIO_CSS

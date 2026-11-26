@@ -42,6 +42,22 @@ TRAINING_MODES = [
     ("Fine-tune", "fine_tune"),
     ("Resume", "resume"),
 ]
+_STOPPABLE_STATUSES = {"queued", "starting", "running"}
+
+
+def _stop_enabled(job: JobState | None) -> bool:
+    """Stop is available only while a job is actually running."""
+    return job is not None and job.status in _STOPPABLE_STATUSES
+
+
+def reconnect_needed(snap: dict[str, Any]) -> bool:
+    """Show Reconnect only when a live job looks disconnected or its heartbeat is stale."""
+    job = snap.get("job")
+    if job is None:
+        return False
+    if snap.get("heartbeat_stale"):
+        return True
+    return job.status in {"queued", "starting", "running", "stopping"} and not snap.get("alive")
 
 
 def _dataset_choices(controller: AppController) -> list[tuple[str, str]]:
@@ -98,10 +114,10 @@ def _render_monitor_html(snap: dict[str, Any]) -> str:
         return (
             '<div class="studio-card">'
             '<div style="display:flex;justify-content:space-between;align-items:center;">'
-            "<strong>Status: Idle</strong>"
-            f'<span style="font-size:12px;color:#94a3c8;">{html.escape(gpu_txt)}</span>'
+            "<strong>Idle</strong>"
+            f'<span style="font-size:12px;color:#64748B;">{html.escape(gpu_txt)}</span>'
             "</div>"
-            '<div style="color:#8fa1c7;font-size:12.5px;margin-top:6px;">Select a ready dataset and click Start Training to launch the background worker.</div>'
+            '<div class="empty-note" style="margin-top:6px;">Select a dataset and click Start Training.</div>'
             "</div>"
         )
 
@@ -121,45 +137,45 @@ def _render_monitor_html(snap: dict[str, Any]) -> str:
     <div class="studio-card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <div>
-          <strong style="font-size:14px;color:#f1f5ff;">{html.escape(job.run_name)}</strong>
-          <span style="color:#94a3c8;font-size:12px;margin-left:8px;">{html.escape(job.model_variant.upper())} · {html.escape(gpu_txt)}</span>
+          <strong style="font-size:14px;">{html.escape(job.run_name)}</strong>
+          <span style="color:#64748B;font-size:12px;margin-left:8px;">{html.escape(job.model_variant.upper())} · {html.escape(gpu_txt)}</span>
         </div>
         {render_status_badge(job.status)}
       </div>
 
-      <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:12px;color:#cbd5f5;">
+      <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:12px;color:#64748B;">
         <span>Epoch <strong>{job.current_epoch} / {job.total_epochs}</strong> ({pct:.1f}%)</span>
         <span>Elapsed: <strong>{format_duration(job.elapsed_seconds)}</strong> · ETA: <strong>{format_duration(job.eta_seconds)}</strong></span>
       </div>
-      <div style="height:8px;background:#1a2748;border-radius:99px;overflow:hidden;margin:6px 0 10px 0;">
-        <div style="height:100%;width:{pct:.1f}%;background:linear-gradient(90deg,#6344f5,#22c55e);transition:width 0.3s;"></div>
+      <div style="height:8px;background:#E2E8F0;border-radius:99px;overflow:hidden;margin:6px 0 10px 0;">
+        <div style="height:100%;width:{pct:.1f}%;background:#2563EB;"></div>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;text-align:center;">
-        <div style="background:#0b1224;border:1px solid #233255;border-radius:8px;padding:6px;">
-          <div style="font-size:10.5px;color:#8fa1c7;">Train Loss</div>
-          <div style="font-weight:700;color:#e5ecff;">{fmt(latest.get('train_loss_total'))}</div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px;">
+          <div style="font-size:11px;color:#64748B;">Train Loss</div>
+          <div style="font-weight:650;">{fmt(latest.get('train_loss_total'))}</div>
         </div>
-        <div style="background:#0b1224;border:1px solid #233255;border-radius:8px;padding:6px;">
-          <div style="font-size:10.5px;color:#8fa1c7;">Val Loss</div>
-          <div style="font-weight:700;color:#e5ecff;">{fmt(latest.get('val_loss_total'))}</div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px;">
+          <div style="font-size:11px;color:#64748B;">Val Loss</div>
+          <div style="font-weight:650;">{fmt(latest.get('val_loss_total'))}</div>
         </div>
-        <div style="background:#0b1224;border:1px solid #233255;border-radius:8px;padding:6px;">
-          <div style="font-size:10.5px;color:#8fa1c7;">Precision</div>
-          <div style="font-weight:700;color:#93c5fd;">{fmt(latest.get('precision'))}</div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px;">
+          <div style="font-size:11px;color:#64748B;">Precision</div>
+          <div style="font-weight:650;">{fmt(latest.get('precision'))}</div>
         </div>
-        <div style="background:#0b1224;border:1px solid #233255;border-radius:8px;padding:6px;">
-          <div style="font-size:10.5px;color:#8fa1c7;">Recall</div>
-          <div style="font-weight:700;color:#93c5fd;">{fmt(latest.get('recall'))}</div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px;">
+          <div style="font-size:11px;color:#64748B;">Recall</div>
+          <div style="font-weight:650;">{fmt(latest.get('recall'))}</div>
         </div>
-        <div style="background:#0b1224;border:1px solid #233255;border-radius:8px;padding:6px;">
-          <div style="font-size:10.5px;color:#8fa1c7;">mAP50</div>
-          <div style="font-weight:700;color:#4ade80;">{fmt(job.best_map50)}</div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px;">
+          <div style="font-size:11px;color:#64748B;">mAP50</div>
+          <div style="font-weight:650;">{fmt(job.best_map50)}</div>
         </div>
-        <div style="background:#0b1224;border:1px solid #233255;border-radius:8px;padding:6px;">
-          <div style="font-size:10.5px;color:#8fa1c7;">Best mAP50-95</div>
-          <div style="font-weight:700;color:#4ade80;">{fmt(job.best_map50_95)}</div>
-          <div style="font-size:10px;color:#8fa1c7;">{best_ep}</div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:6px;">
+          <div style="font-size:11px;color:#64748B;">mAP50-95</div>
+          <div style="font-weight:650;">{fmt(job.best_map50_95)}</div>
+          <div style="font-size:10px;color:#64748B;">{best_ep}</div>
         </div>
       </div>
       {err_html}
@@ -201,7 +217,7 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
         gr.HTML(
             render_page_header(
                 "Training",
-                "Configure and run YOLO11 training, monitor metrics in real time, test the best checkpoint manually, and export .pt weights without stopping training.",
+                "Set up a run, watch metrics, test a checkpoint manually, and export .pt weights.",
             )
         )
 
@@ -219,7 +235,13 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
                 value=init_run_id,
                 scale=4,
             )
-            btn_reconnect = gr.Button("Reconnect", variant="secondary", size="sm", scale=2)
+            btn_reconnect = gr.Button(
+                "Reconnect",
+                variant="secondary",
+                size="sm",
+                scale=1,
+                visible=reconnect_needed(init_snap),
+            )
 
         # ---------------- MAIN SPLIT LAYOUT (Left ~58% Training | Right ~42% Model Testing)
         with gr.Row(equal_height=False):
@@ -318,7 +340,12 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
 
                 with gr.Row(elem_classes=["compact-row"]):
                     btn_start = gr.Button("Start Training", variant="primary", scale=3)
-                    btn_stop = gr.Button("Stop Training", variant="stop", scale=2)
+                    btn_stop = gr.Button(
+                        "Stop Training",
+                        variant="stop",
+                        scale=2,
+                        interactive=_stop_enabled(init_job),
+                    )
                 train_feedback = gr.Markdown("")
 
                 # --- Training Monitor & 4 Charts
@@ -462,7 +489,7 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
             epochs, batch, imgsz, device, run_name, workers, seed,
             optimizer, lr0, patience, save_best, save_last,
         ):
-            no_mon = (gr.update(),) * 8
+            no_mon = (gr.update(),) * 9
             if not ds_id:
                 return ("Error: Select a dataset before starting training.", *no_mon)
 
@@ -517,6 +544,7 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
                     r_fig,
                     snap.get("log_tail", ""),
                     _render_checkpoint_status(snap.get("job")),
+                    gr.update(interactive=True),
                 )
             except Exception as exc:
                 return (f"Error: {exc}", *no_mon)
@@ -525,10 +553,10 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
             try:
                 job = controller.stop_training(run_id=selected_run or None)
                 if job is None:
-                    return "No active training job to stop."
-                return f"Graceful stop requested for **`{job.run_name}`**."
+                    return "No active training job to stop.", gr.update(interactive=False)
+                return f"Graceful stop requested for **`{job.run_name}`**.", gr.update(interactive=False)
             except Exception as exc:
-                return f"Error stopping training: {exc}"
+                return f"Error stopping training: {exc}", gr.update()
 
         def _refresh_monitor(selected_run: str | None):
             snap = controller.get_monitor_snapshot(run_id=selected_run or None)
@@ -545,6 +573,7 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
                 r_fig,
                 snap.get("log_tail", ""),
                 _render_checkpoint_status(job),
+                gr.update(interactive=_stop_enabled(job)),
             )
 
         def _refresh_full(selected_ds: str | None, selected_run: str | None):
@@ -552,10 +581,12 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
             ds_val = selected_ds if any(d[1] == selected_ds for d in ds_list) else (ds_list[0][1] if ds_list else None)
             notice = _dataset_readiness_notice(controller, ds_val)
             mon = _refresh_monitor(selected_run)
+            snap = controller.get_monitor_snapshot(run_id=selected_run or None)
             return (
                 gr.update(choices=ds_list, value=ds_val),
                 gr.update(value=(f"**Notice:** {notice}" if notice else ""), visible=bool(notice)),
                 *mon,
+                gr.update(visible=reconnect_needed(snap)),
             )
 
         # ---- Manual Testing handlers (NEVER auto-update, NEVER auto-detect)
@@ -671,7 +702,7 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
             outputs=[resume_empty_md, btn_start],
         )
 
-        mon_outputs = [run_selector, monitor_html, loss_plot, map_plot, prec_plot, rec_plot, log_box, ckpt_status_md]
+        mon_outputs = [run_selector, monitor_html, loss_plot, map_plot, prec_plot, rec_plot, log_box, ckpt_status_md, btn_stop]
         btn_start.click(
             fn=_handle_start,
             inputs=[
@@ -684,7 +715,7 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
             ],
             outputs=[train_feedback, *mon_outputs],
         )
-        btn_stop.click(fn=_handle_stop, inputs=[run_selector], outputs=[train_feedback])
+        btn_stop.click(fn=_handle_stop, inputs=[run_selector], outputs=[train_feedback, btn_stop])
         btn_reconnect.click(fn=_refresh_monitor, inputs=[run_selector], outputs=mon_outputs)
         run_selector.change(fn=_refresh_monitor, inputs=[run_selector], outputs=mon_outputs)
 
@@ -727,8 +758,9 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
         "container": container,
         "run_selector": run_selector,
         "monitor_refresh_fn": _refresh_monitor,
+        "btn_reconnect": btn_reconnect,
         "monitor_refresh_outputs": mon_outputs,
         "refresh_fn": _refresh_full,
         "refresh_inputs": [dataset_dd, run_selector],
-        "refresh_outputs": [dataset_dd, ds_notice_md, *mon_outputs],
+        "refresh_outputs": [dataset_dd, ds_notice_md, *mon_outputs, btn_reconnect],
     }

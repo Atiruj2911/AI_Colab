@@ -1,4 +1,4 @@
-"""Page 3: Annotate — Step 2 in linear workflow (Manual Bounding Box & AI Auto-Label)."""
+"""Annotation page shell. The canvas, tools, and save behavior live in annotator.html."""
 
 from __future__ import annotations
 
@@ -11,29 +11,32 @@ from application.app_controller import AppController
 
 
 def _iframe_html(dataset_id: str | None) -> str:
-    query = f"?dataset={quote(dataset_id)}" if dataset_id else ""
-    url = f"/annotate{query}"
+    if not dataset_id:
+        return (
+            '<div class="studio-card">'
+            '<div style="font-size:15px;font-weight:600;margin-bottom:4px;">No dataset open</div>'
+            '<div class="empty-note">Import or select a dataset, then use Open on the Datasets page. '
+            "The canvas stays empty until a dataset is loaded.</div>"
+            "</div>"
+        )
+    query = f"?dataset={quote(dataset_id)}"
     return (
-        f'<iframe src="{url}" '
-        'style="width:100%;height:calc(100vh - 104px);min-height:660px;border:1px solid #233255;'
-        'border-radius:12px;background:#080d1a;display:block;"></iframe>'
+        f'<iframe src="/annotate{query}" title="Annotation workspace" '
+        'style="width:100%;height:calc(100vh - 88px);min-height:680px;border:1px solid #E2E8F0;'
+        'border-radius:8px;background:#2A2E35;display:block;"></iframe>'
     )
 
 
 def _header_html(dataset_id: str | None) -> str:
-    query = f"?dataset={quote(dataset_id)}" if dataset_id else ""
-    url = f"/annotate{query}"
+    if not dataset_id:
+        return ""
+    url = f"/annotate?dataset={quote(dataset_id)}"
     return (
-        '<div style="display:flex;justify-content:space-between;align-items:center;'
-        'padding:6px 10px;background:#0f172a;border:1px solid #233255;border-radius:10px;">'
-        '<div style="font-size:13px;color:#cbd5f5;">'
-        '<strong>Annotation Workspace</strong> · Drag on canvas to draw boxes '
-        '(release to assign or create class · Enter to confirm)'
-        "</div>"
+        '<div class="page-header" style="min-height:40px;margin-bottom:8px;">'
+        '<div><h2 class="page-title" style="font-size:20px;">Annotation</h2>'
+        '<div class="page-subtitle">Draw and edit boxes. Shortcuts are on each tool.</div></div>'
         f'<a href="{url}" target="_blank" rel="noopener" '
-        'style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;'
-        'background:#1a2748;border:1px solid #2b3f6b;color:#e2e8f0;text-decoration:none;'
-        'font-size:12px;font-weight:600;">Open Fullscreen</a>'
+        'style="font-size:13px;font-weight:600;color:#2563EB;text-decoration:none;">Open fullscreen</a>'
         "</div>"
     )
 
@@ -43,22 +46,19 @@ def build_annotate_page(controller: AppController) -> dict[str, Any]:
     default_id = datasets[0].dataset_id if datasets else None
 
     with gr.Column(visible=False) as container:
-        with gr.Row(elem_classes=["compact-row"]):
-            header_html = gr.HTML(value=_header_html(default_id), scale=9)
-            btn_go_prepare = gr.Button("Next: Prepare (Split & Augment)", variant="primary", size="sm", scale=0, min_width=230)
+        header_html = gr.HTML(value=_header_html(default_id))
         frame_html = gr.HTML(value=_iframe_html(default_id))
 
         def _refresh_page():
             sess = controller.session_service.get_or_create_session()
             active = sess.get("active_dataset_id")
-            if not active:
-                ds_list = [d for d in controller.list_datasets() if d.total_images > 0]
-                active = ds_list[0].dataset_id if ds_list else None
+            known = {d.dataset_id for d in controller.list_datasets() if d.total_images > 0}
+            if active not in known:
+                active = next(iter(known), None)
             return _header_html(active), _iframe_html(active)
 
     return {
         "container": container,
-        "btn_go_prepare": btn_go_prepare,
         "refresh_fn": _refresh_page,
         "refresh_inputs": [],
         "refresh_outputs": [header_html, frame_html],

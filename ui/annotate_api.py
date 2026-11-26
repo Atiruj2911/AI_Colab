@@ -5,10 +5,11 @@ Reuses AppController / DatasetService / AnnotationService directly — zero dupl
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
@@ -17,6 +18,34 @@ from core.dataset.entries import SPLITS
 from utils.validation import format_bytes
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+_MAX_IMPORT_BYTES = 512 * 1024 * 1024
+
+
+def _safe_pt_name(filename: str) -> str:
+    stem = Path(filename or "").name
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", stem).strip("._")
+    if not cleaned.lower().endswith(".pt"):
+        cleaned = f"{cleaned or 'model'}.pt"
+    return cleaned
+
+
+def _imported_models(controller: AppController) -> list[dict[str, str]]:
+    folder = controller.workspace.weights_dir / "imported"
+    if not folder.is_dir():
+        return []
+    models: list[dict[str, str]] = []
+    for path in sorted(folder.glob("*.pt"), key=lambda item: item.stat().st_mtime, reverse=True):
+        if not path.is_file():
+            continue
+        models.append(
+            {
+                "label": f"Imported {path.name} ({format_bytes(path.stat().st_size)})",
+                "path": str(path.resolve()),
+            }
+        )
+    return models
+
+
 PRETRAINED_MODELS = [
     {"label": "yolo11n.pt (โมเดลเล็ก เร็ว — โหลดอัตโนมัติ)", "path": "yolo11n.pt"},
     {"label": "yolo11s.pt (โมเดลกลาง — โหลดอัตโนมัติ)", "path": "yolo11s.pt"},
@@ -37,6 +66,15 @@ class SaveLabelsPayload(BaseModel):
 
 class ClassNamePayload(BaseModel):
     name: str
+
+
+class ApplyAugPayload(BaseModel):
+    """Module-level so FastAPI can resolve it as a JSON body. A class nested inside the router factory is treated as a missing query parameter."""
+
+    copies_per_image: int = 2
+    seed: int = 42
+    new_name: str | None = None
+    ranges: dict[str, dict[str, Any]]
 
 
 class AutoLabelSinglePayload(BaseModel):
@@ -204,7 +242,41 @@ def create_annotate_router(controller: AppController) -> APIRouter:
             {"label": f"⭐ {c.name} ({format_bytes(c.size_bytes)})", "path": c.path}
             for c in controller.list_checkpoints()
         ]
-        return {"models": trained + PRETRAINED_MODELS}
+        return {"models": trained + _imported_models(controller) + PRETRAINED_MODELS}
+
+    @router.post("/api/annotate/models/import")
+    async def import_model(file: UploadFile = File(...)) -> dict[str, str]:
+        filename = _safe_pt_name(file.filename or "")
+        if not (file.filename or "").lower().endswith(".pt"):
+            raise HTTPException(status_code=400, detail="Choose a .pt weight file.")
+        dest_dir = controller.workspace.weights_dir / "imported"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = (dest_dir / filename).resolve()
+        if dest.parent != dest_dir.resolve():
+            raise HTTPException(status_code=400, detail="Invalid file name.")
+        total = 0
+        try:
+            with dest.open("wb") as out:
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > _MAX_IMPORT_BYTES:
+                        raise HTTPException(status_code=400, detail="Model file is larger than 512 MB.")
+                    if total == len(chunk) and not (chunk.startswith(b"PK") or chunk.startswith(b"\x80")):
+                        raise HTTPException(status_code=400, detail="File is not a PyTorch .pt weight.")
+                    out.write(chunk)
+        except HTTPException:
+            dest.unlink(missing_ok=True)
+            raise
+        except Exception as exc:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail=f"Could not save the model: {exc}") from exc
+        if total < 1024:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=400, detail="File is too small to be a model.")
+        return {"label": f"Imported {dest.name} ({format_bytes(total)})", "path": str(dest)}
 
     @router.post("/api/annotate/dataset/{dataset_id}/autolabel/single")
     def autolabel_single(dataset_id: str, payload: AutoLabelSinglePayload) -> dict[str, Any]:
@@ -287,12 +359,6 @@ def create_annotate_router(controller: AppController) -> APIRouter:
                 for b in boxes
             ],
         }
-
-    class ApplyAugPayload(BaseModel):
-        copies_per_image: int = 2
-        seed: int = 42
-        new_name: str | None = None
-        ranges: dict[str, dict[str, Any]]
 
     @router.post("/api/aug/apply/{dataset_id}")
     def api_aug_apply(dataset_id: str, payload: ApplyAugPayload) -> dict[str, Any]:

@@ -8,22 +8,43 @@ from typing import Any
 from core.schemas import DatasetValidationReport, JobState
 from utils.validation import format_bytes, format_duration
 
+def _icon(paths: str, size: int = 14) -> str:
+    """Inline Lucide-style stroke icon. Decorative; the adjacent text carries the meaning."""
+    return (
+        f'<svg class="status-icon" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        f'aria-hidden="true">{paths}</svg>'
+    )
+
+
+_ICON = {
+    "clock": _icon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+    "loader": _icon('<path d="M21 12a9 9 0 1 1-6.2-8.6"/>'),
+    "activity": _icon('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
+    "square": _icon('<rect width="14" height="14" x="5" y="5" rx="1"/>'),
+    "check": _icon('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
+    "pause": _icon('<rect width="4" height="14" x="6" y="5"/><rect width="4" height="14" x="14" y="5"/>'),
+    "alert": _icon('<path d="m21.7 18-9-16a2 2 0 0 0-3.4 0l-9 16A2 2 0 0 0 2 21h18a2 2 0 0 0 1.7-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'),
+    "minus": _icon('<circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>'),
+    "info": _icon('<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'),
+}
+
 JOB_STATUS_DISPLAY: dict[str, tuple[str, str, str]] = {
-    "queued": ("⏳", "รอเริ่มเทรน (Queued)", "badge-info"),
-    "starting": ("🚀", "กำลังเตรียมโมเดล (Starting)", "badge-info"),
-    "running": ("🟢", "กำลังเทรน (Running)", "badge-running"),
-    "stopping": ("🛑", "กำลังหยุดอย่างปลอดภัย (Stopping)", "badge-warning"),
-    "completed": ("✅", "เทรนเสร็จสมบูรณ์ (Completed)", "badge-success"),
-    "stopped": ("⏹️", "หยุดโดยผู้ใช้ (Stopped)", "badge-warning"),
-    "failed": ("❌", "เกิดข้อผิดพลาด (Failed)", "badge-danger"),
+    "queued": ("clock", "Queued", "badge-info"),
+    "starting": ("loader", "Starting", "badge-info"),
+    "running": ("activity", "Running", "badge-running"),
+    "stopping": ("square", "Stopping", "badge-warning"),
+    "completed": ("check", "Completed", "badge-success"),
+    "stopped": ("pause", "Stopped", "badge-warning"),
+    "failed": ("alert", "Failed", "badge-danger"),
 }
 
 
 def render_status_badge(status: str | None) -> str:
     if not status:
-        return '<span class="status-badge badge-muted">⚪ ยังไม่มีงานเทรน (Idle)</span>'
-    icon, label, cls = JOB_STATUS_DISPLAY.get(status, ("ℹ️", status, "badge-muted"))
-    return f'<span class="status-badge {cls}">{icon} {html.escape(label)}</span>'
+        return f'<span class="status-badge badge-muted">{_ICON["minus"]} Idle</span>'
+    key, label, cls = JOB_STATUS_DISPLAY.get(status, ("info", status, "badge-muted"))
+    return f'<span class="status-badge {cls}">{_ICON.get(key, _ICON["info"])} {html.escape(label)}</span>'
 
 
 def render_page_header(title: str, subtitle: str = "", right_html: str = "") -> str:
@@ -56,18 +77,16 @@ def render_temp_storage_warning(compact: bool = False) -> str:
     if compact:
         return (
             '<div class="callout-warning">'
-            "<strong>⚠️ ข้อจำกัด Colab Temporary Storage:</strong> "
-            "ไฟล์ทั้งหมดอยู่ในดิสก์ชั่วคราวของ Runtime นี้ — หากแท็บเบราว์เซอร์หลุดแต่ Runtime ยังทำงานอยู่ "
-            "สามารถกด <strong>Reconnect</strong> กลับมาดูผลต่อได้ แต่หาก <strong>Colab Runtime ถูกยุติ (Terminated/Disconnect Runtime)</strong> "
-            "ไฟล์และ checkpoint จะหายทั้งหมด กรุณาดาวน์โหลด <code>best.pt</code> / <code>last.pt</code> เก็บลงเครื่องเมื่อได้ผลที่ต้องการ"
+            "<strong>Colab temporary disk.</strong> "
+            "Files live only on this runtime. Reconnect recovers a live job after a browser refresh. "
+            "If the runtime is terminated, checkpoints are gone — download <code>best.pt</code> and <code>last.pt</code>."
             "</div>"
         )
     return (
         '<div class="callout-warning">'
-        "<strong>⚠️ ข้อสำคัญเรื่องพื้นที่ชั่วคราวและการกู้คืน (Colab Temporary Storage):</strong><br>"
-        "• ระบบนี้บันทึก Dataset, Checkpoints (<code>best.pt</code>, <code>last.pt</code>) และผลลัพธ์ไว้ใน Temporary Disk ของ Colab Runtime โดยไม่บังคับเชื่อม Google Drive<br>"
-        "• <strong>กรณี Browser หลุด/รีเฟรช แต่ Runtime ยังมีชีวิต:</strong> งานเทรนยังทำงานต่อเบื้องหลัง และสามารถกด <strong>Reconnect</strong> กลับมาติดตามได้โดยไม่เริ่มเทรนซ้ำ<br>"
-        "• <strong>กรณี Colab Runtime ถูกยุติ (Idle timeout / ครบโควต้า / Restart Runtime):</strong> ข้อมูลใน Runtime จะถูกลบทั้งหมด ไม่สามารถกู้คืนจากในเครื่อง Colab ได้ ต้องใช้ไฟล์ checkpoint ที่ผู้ใช้ดาวน์โหลดเก็บไว้ภายนอกแล้วเท่านั้น"
+        "<strong>Colab temporary storage.</strong> "
+        "Datasets and checkpoints stay on this runtime disk. A browser refresh can reconnect to a live job. "
+        "Terminating the runtime deletes everything that was not downloaded."
         "</div>"
     )
 
@@ -75,7 +94,7 @@ def render_temp_storage_warning(compact: bool = False) -> str:
 def render_planned_notice(phase_label: str, description: str) -> str:
     return (
         '<div class="callout-info">'
-        f"<strong>🗓️ ฟีเจอร์ในแผน ({html.escape(phase_label)}):</strong> "
+        f"<strong>ฟีเจอร์ในแผน ({html.escape(phase_label)}):</strong> "
         f"{html.escape(description)}"
         "</div>"
     )
@@ -85,19 +104,18 @@ def render_dataset_summary_card(report: DatasetValidationReport | None) -> str:
     if report is None:
         return (
             '<div class="studio-card">'
-            "<div style='color:#93a4cc;font-size:14px;'>ยังไม่ได้เลือกหรืออัปโหลด Dataset — "
-            "อัปโหลดไฟล์ ZIP (YOLO Format) หรือกด <strong>สร้าง Demo Dataset</strong> เพื่อเริ่มต้น</div>"
+            '<div class="empty-note">No dataset selected. Import images or a YOLO dataset to continue.</div>'
             "</div>"
         )
 
     if report.is_valid:
-        badge = '<span class="status-badge badge-success">✅ โครงสร้างถูกต้อง (YOLO Detection)</span>'
+        badge = f'<span class="status-badge badge-success">{_ICON["check"]} Ready</span>'
     else:
-        badge = f'<span class="status-badge badge-danger">❌ พบข้อผิดพลาด {len(report.errors)} รายการ</span>'
+        badge = f'<span class="status-badge badge-danger">{_ICON["alert"]} {len(report.errors)} errors</span>'
 
     warn_badge = ""
     if report.warnings:
-        warn_badge = f' <span class="status-badge badge-warning">⚠️ คำเตือน {len(report.warnings)} รายการ</span>'
+        warn_badge = f' <span class="status-badge badge-warning">{_ICON["alert"]} {len(report.warnings)} warnings</span>'
 
     split_rows = []
     for sp_name, sp in report.splits.items():
@@ -114,30 +132,26 @@ def render_dataset_summary_card(report: DatasetValidationReport | None) -> str:
     classes_html = ", ".join(
         f"<code>{cid}: {html.escape(name)}</code> ({report.class_counts.get(name, 0):,})"
         for cid, name in sorted(report.class_names.items())
-    ) or "<em>ไม่พบรายชื่อคลาส</em>"
+    ) or "<em>No classes</em>"
 
     return (
         '<div class="studio-card">'
-        f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;'>"
-        f"<div style='font-size:17px;font-weight:700;'>📦 {html.escape(report.dataset_name)}</div>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;'>"
+        f"<div style='font-size:16px;font-weight:600;'>{html.escape(report.dataset_name)}</div>"
         f"<div>{badge}{warn_badge}</div>"
         "</div>"
         + render_kpi_cards(
             [
-                ("รูปภาพทั้งหมด", f"{report.total_images:,}", "Images", False),
-                ("ไฟล์ Label (.txt)", f"{report.total_labels:,}", f"{report.total_boxes:,} boxes", False),
-                ("จำนวน Class", f"{len(report.class_names):,}", "จาก data.yaml", True),
+                ("Images", f"{report.total_images:,}", "Total", False),
+                ("Labels", f"{report.total_labels:,}", f"{report.total_boxes:,} boxes", False),
+                ("Classes", f"{len(report.class_names):,}", "From data.yaml", False),
             ]
         )
-        + f"<div style='margin:8px 0;font-size:13px;color:#cbd5f5;'><strong>คลาส (จำนวน Box):</strong> {classes_html}</div>"
+        + f"<div style='margin:8px 0;font-size:13px;'><strong>Classes:</strong> {classes_html}</div>"
         + (
-            "<table style='width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;'>"
-            "<thead><tr style='border-bottom:1px solid #25365e;color:#93a4cc;'>"
-            "<th style='text-align:left;padding:6px 8px;'>Split</th>"
-            "<th style='text-align:right;padding:6px 8px;'>Images</th>"
-            "<th style='text-align:right;padding:6px 8px;'>Labels</th>"
-            "<th style='text-align:right;padding:6px 8px;'>Matched</th>"
-            "<th style='text-align:right;padding:6px 8px;'>Boxes</th>"
+            "<table class='data-table'>"
+            "<thead><tr>"
+            "<th>Split</th><th>Images</th><th>Labels</th><th>Matched</th><th>Boxes</th>"
             "</tr></thead><tbody>"
             + "".join(split_rows)
             + "</tbody></table>"
@@ -150,26 +164,26 @@ def render_dataset_summary_card(report: DatasetValidationReport | None) -> str:
 
 def render_validation_issues_markdown(report: DatasetValidationReport | None) -> str:
     if report is None:
-        return "ยังไม่มีรายงานการตรวจสอบ"
+        return "No validation report yet."
 
     lines: list[str] = []
     if not report.errors and not report.warnings:
-        lines.append("✅ **ผ่านการตรวจสอบทั้งหมด** ไม่พบ Error หรือ Warning — พร้อมนำไปเทรน YOLO11 ได้ทันที")
+        lines.append("**Validation passed.** No errors or warnings.")
         return "\n".join(lines)
 
     if report.errors:
-        lines.append(f"### ❌ ข้อผิดพลาดที่ต้องแก้ไข ({len(report.errors)} รายการ)")
+        lines.append(f"### Errors ({len(report.errors)})")
         for err in report.errors:
             lines.append(f"- **[{err.code}]** {err.message}")
             if err.hint:
-                lines.append(f"  - 💡 *คำแนะนำ:* {err.hint}")
+                lines.append(f"  - {err.hint}")
 
     if report.warnings:
-        lines.append(f"\n### ⚠️ คำเตือน ({len(report.warnings)} รายการ)")
+        lines.append(f"\n### Warnings ({len(report.warnings)})")
         for warn in report.warnings:
             lines.append(f"- **[{warn.code}]** {warn.message}")
             if warn.hint:
-                lines.append(f"  - 💡 *คำแนะนำ:* {warn.hint}")
+                lines.append(f"  - {warn.hint}")
 
     return "\n".join(lines)
 
@@ -177,20 +191,22 @@ def render_validation_issues_markdown(report: DatasetValidationReport | None) ->
 def render_job_sidebar_pill(job: JobState | None, alive: bool) -> str:
     if job is None:
         return (
-            '<div style="padding:10px;border-radius:10px;background:#10192e;border:1px solid #1f2e52;font-size:12px;">'
-            "<div style='color:#93a4cc;margin-bottom:4px;'>สถานะงานเทรน</div>"
+            '<div class="nav-status-card">'
+            '<div class="nav-status-label">Runtime</div>'
             + render_status_badge(None)
             + "</div>"
         )
-    sub = f"Run: {job.run_name} • Ep {job.current_epoch}/{job.total_epochs}"
+    sub = f"{job.run_name} · Ep {job.current_epoch}/{job.total_epochs}"
     if alive and job.pid:
-        sub += f" • PID {job.pid}"
+        sub += f" · PID {job.pid}"
+    elif job.status in {"queued", "starting", "running"} and not alive:
+        sub += " · worker not running"
     return (
-        '<div style="padding:10px;border-radius:10px;background:#10192e;border:1px solid #263966;font-size:12px;">'
-        "<div style='color:#93a4cc;margin-bottom:4px;'>สถานะงานล่าสุด</div>"
+        '<div class="nav-status-card">'
+        '<div class="nav-status-label">Runtime</div>'
         + render_status_badge(job.status)
-        + f"<div style='color:#cbd5f5;margin-top:6px;word-break:break-word;'>{html.escape(sub)}</div>"
-        "</div>"
+        + f'<div class="nav-status-sub">{html.escape(sub)}</div>'
+        + "</div>"
     )
 
 
