@@ -408,9 +408,8 @@ def build_training_workspace_page(controller: AppController) -> dict[str, Any]:
                         scale=4,
                     )
 
-                with gr.Row():
-                    test_conf = gr.Slider(label="Confidence", minimum=0.05, maximum=0.95, step=0.05, value=DEFAULT_CONF_THRESHOLD)
-                    test_iou = gr.Slider(label="IoU Threshold", minimum=0.05, maximum=0.95, step=0.05, value=DEFAULT_IOU_THRESHOLD)
+                test_conf = gr.Slider(label="Confidence", minimum=0.05, maximum=0.95, step=0.05, value=DEFAULT_CONF_THRESHOLD)
+                test_iou = gr.Slider(label="IoU Threshold", minimum=0.05, maximum=0.95, step=0.05, value=DEFAULT_IOU_THRESHOLD)
 
                 btn_detect = gr.Button("Detect", variant="primary")
                 test_msg = gr.Markdown("")

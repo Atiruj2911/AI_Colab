@@ -232,6 +232,33 @@ STUDIO_CSS = f"""
     min-height: 38px;
     font-size: 14px;
 }}
+/* Slider values live in a short box beside the label. The 38px field
+   height pushes that number down onto the track. */
+.gradio-container .tab-like-container input[type="number"] {{
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 0 8px !important;
+    line-height: 26px !important;
+    font-size: 13px !important;
+}}
+.gradio-container .tab-like-container {{
+    height: 28px !important;
+    align-items: center !important;
+}}
+.gradio-container .tab-like-container button {{
+    min-height: 0 !important;
+    height: 28px !important;
+    padding: 0 8px !important;
+    border-radius: 0 !important;
+}}
+.gradio-container .wrap > .head {{
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+}}
+.gradio-container .slider_input_container {{
+    align-items: center !important;
+}}
 
 /* Danger: Gradio 6 puts variant="stop" on the button as class "stop". */
 .gradio-container button.stop {{
