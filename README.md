@@ -43,7 +43,7 @@
 
 https://colab.research.google.com/github/Atiruj2911/AI_Colab/blob/main/notebooks/AI_Training_Studio_Colab.ipynb
 
-โน้ตบุ๊กจะดึงโค้ดล่าสุดจาก GitHub มาไว้บน runtime ของคนนั้น ข้อมูลเทรนอยู่คนละดิสก์ ไม่ปนกัน เมื่อมีเวอร์ชันใหม่ ให้ Restart session แล้ว Run all อีกครั้ง
+โน้ตบุ๊กจะดึงโค้ดล่าสุดจาก GitHub มาไว้บน runtime ของคนนั้น ข้อมูลเทรนอยู่คนละดิสก์ ไม่ปนกัน พอลิงก์พร้อมจะเปิดหน้าโปรแกรมให้เอง เมื่อมีเวอร์ชันใหม่ ให้เปิดลิงก์นี้ใหม่ แล้ว Restart session และ Run all
 
 ### 2. บนเครื่อง Local (Windows / Linux / macOS)
 ```bash
