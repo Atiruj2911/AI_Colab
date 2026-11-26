@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Annotation Workspace — AI Training Studio</title>
+<style>
+  :root {
+    --bg: #080d1a;
+    --panel: #0f172a;
+    --panel-2: #131d35;
+    --border: #233255;
+    --text: #e5ecff;
+    --muted: #8fa1c7;
+    --accent: #6d4aff;
+    --accent-hover: #7f60ff;
+    --danger: #ef4444;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', 'Noto Sans Thai', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    user-select: none;
+  }
+  .app {
+    display: flex; flex-direction: column;
+    width: 100vw; height: 100vh;
+  }
+
+  /* ---------------- TOP TOOLBAR ---------------- */
+  .topbar {
+    height: 48px; flex-shrink: 0;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; gap: 10px;
+  }
+  .top-group { display: flex; align-items: center; gap: 6px; }
+  .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+  .tb-btn {
+    height: 30px; padding: 0 7px; border-radius: 7px;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 500; transition: 0.12s; white-space: nowrap;
+  }
+  .tb-btn:hover:not(:disabled) { background: #1c2a4d; border-color: #395085; }
+  .tb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .tb-btn.active {
+    background: var(--accent); border-color: #8b70ff; color: #fff;
+    box-shadow: 0 0 12px rgba(109,74,255,0.45);
+  }
+  .tb-btn.primary { background: linear-gradient(90deg, #6344f5, #7c5cff); border-color: #8b70ff; color: #fff; }
+  .tb-btn.primary:hover:not(:disabled) { filter: brightness(1.1); }
+  .tb-btn.danger { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.45); color: #fca5a5; }
+  .tb-btn.danger:hover:not(:disabled) { background: rgba(239,68,68,0.3); }
+
+  .tb-select {
+    height: 32px; padding: 0 8px; border-radius: 7px;
+    background: #0b1224; color: var(--text);
+    border: 1px solid var(--border); font-size: 12.5px; outline: none;
+  }
+  .tb-select:focus { border-color: var(--accent); }
+  .kbd {
+    font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.08);
+    padding: 1px 4px; border-radius: 3px; font-family: monospace;
+  }
+  .toggle-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--muted); cursor: pointer; padding: 0 6px;
+  }
+  .toggle-pill input { accent-color: var(--accent); cursor: pointer; }
+
+  /* ---------------- MAIN BODY ---------------- */
+  .main {
+    flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden;
+  }
+
+  /* LEFT SIDEBAR: Gallery */
+  .left-sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .sidebar-head {
+    padding: 10px; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .filter-pills { display: flex; gap: 4px; }
+  .pill {
+    flex: 1; padding: 4px 2px; border-radius: 6px; text-align: center;
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--muted); font-size: 11px; cursor: pointer;
+  }
+  .pill.active { background: var(--accent); color: #fff; border-color: #8b70ff; }
+  .gallery-list {
+    flex: 1; overflow-y: auto; padding: 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start;
+  }
+  .thumb-card {
+    background: #0b1224; border: 2px solid transparent; border-radius: 8px;
+    overflow: hidden; cursor: pointer; position: relative; transition: 0.12s;
+  }
+  .thumb-card:hover { border-color: #3b5288; }
+  .thumb-card.active { border-color: var(--accent); box-shadow: 0 0 10px rgba(109,74,255,0.4); }
+  .thumb-card img {
+    width: 100%; height: 68px; object-fit: cover; display: block; background: #050812;
+  }
+  .thumb-meta {
+    padding: 3px 5px; font-size: 10.5px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .thumb-badge {
+    position: absolute; top: 4px; right: 4px;
+    font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 99px;
+    background: rgba(8,13,26,0.85); border: 1px solid var(--border);
+  }
+  .thumb-badge.labeled { color: #4ade80; border-color: rgba(74,222,128,0.45); }
+  .thumb-badge.unlabeled { color: #94a3b8; }
+
+  /* CENTER CANVAS */
+  .canvas-wrap {
+    flex: 1; min-width: 0; position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, #121c38 0%, #070b16 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #canvas {
+    width: 100%; height: 100%; display: block; cursor: crosshair;
+  }
+  .canvas-empty {
+    position: absolute; color: var(--muted); text-align: center; pointer-events: none;
+  }
+
+  /* INSTANT CLASS SELECTION POPUP */
+  .class-popup {
+    position: absolute; z-index: 50; width: 250px;
+    background: #10192e; border: 1px solid #485fa0; border-radius: 10px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.65); padding: 10px;
+    display: none; flex-direction: column; gap: 8px;
+  }
+  .class-popup.open { display: flex; }
+  .popup-title {
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; font-size: 12px; color: #c7d2fe;
+  }
+  .popup-input {
+    width: 100%; height: 32px; padding: 0 9px; border-radius: 6px;
+    background: #080d1a; color: #fff; border: 1px solid #395085; outline: none;
+    font-size: 13px;
+  }
+  .popup-input:focus { border-color: var(--accent); }
+  .popup-list {
+    max-height: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+  }
+  .popup-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 8px; border-radius: 6px; cursor: pointer;
+    background: #131d35; border: 1px solid transparent; font-size: 12.5px;
+  }
+  .popup-item:hover, .popup-item.focused {
+    background: #1f2f58; border-color: var(--accent);
+  }
+  .popup-actions { display: flex; gap: 6px; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+  }
+
+  /* RIGHT SIDEBAR: Inspector & Class Manager */
+  .right-sidebar {
+    width: 268px; flex-shrink: 0;
+    background: var(--panel); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .r-section {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .r-title {
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .class-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 7px; border-radius: 6px; background: var(--panel-2);
+    border: 1px solid transparent; cursor: pointer;
+  }
+  .class-row:hover { border-color: #364b7d; }
+  .class-row.default-cls { border-color: var(--accent); background: #1a2448; }
+  .class-row .cname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .class-row .cid { font-size: 10.5px; color: var(--muted); font-family: monospace; }
+  .class-row .ccnt { font-size: 11px; color: #a5b4fc; }
+  .icon-btn {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    padding: 2px 4px; border-radius: 4px; font-size: 12px;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .add-row { display: flex; gap: 5px; }
+  .add-row input {
+    flex: 1; height: 30px; padding: 0 8px; border-radius: 6px;
+    background: #0b1224; border: 1px solid var(--border); color: var(--text); outline: none;
+  }
+  .add-row input:focus { border-color: var(--accent); }
+
+  .layer-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 7px; border-radius: 6px; background: #0c1428;
+    border: 1px solid transparent; cursor: pointer; font-size: 12px;
+  }
+  .layer-row.selected { border-color: var(--accent); background: #1b2750; }
+  .layer-row .linfo { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* COLLAPSIBLE AI ASSIST DRAWER */
+  .ai-drawer {
+    position: absolute; top: 0; right: 268px; bottom: 0; width: 290px; z-index: 40;
+    background: #10192e; border-left: 1px solid #395085;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.55);
+    padding: 14px; display: none; flex-direction: column; gap: 10px; overflow-y: auto;
+  }
+  .ai-drawer.open { display: flex; }
+  .ai-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .ai-field label { color: var(--muted); }
+  .ai-status {
+    font-size: 12px; line-height: 1.45; padding: 8px; border-radius: 7px;
+    background: #0b1224; border: 1px solid var(--border); color: #cbd5f5;
+    display: none;
+  }
+  .ai-status.show { display: block; }
+
+  /* BOTTOM STATUS BAR */
+  .bottombar {
+    height: 38px; flex-shrink: 0;
+    background: var(--panel); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; gap: 10px; font-size: 12px;
+  }
+  .status-dot { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+  .status-dot.saved { color: var(--ok); }
+  .status-dot.dirty { color: var(--warn); }
+  .toast {
+    position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
+    background: #182548; color: #fff; border: 1px solid #4c64a8;
+    padding: 7px 14px; border-radius: 8px; font-size: 12.5px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 90;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- TOP TOOLBAR -->
+  <div class="topbar">
+    <div class="top-group">
+      <select id="dsSelect" class="tb-select" title="Dataset"></select>
+      <select id="splitSelect" class="tb-select" title="Split">
+        <option value="train">train</option>
+        <option value="val">val</option>
+        <option value="test">test</option>
+      </select>
+    </div>
+
+    <div class="top-group">
+      <button id="toolSelect" class="tb-btn" title="เลือก / ย้าย / ปรับขนาดกรอบ (V)">🖱️ Select <span class="kbd">V</span></button>
+      <button id="toolBox" class="tb-btn active" title="วาดกรอบ Bounding Box (B)">⬜ Box <span class="kbd">B</span></button>
+      <button id="toolPan" class="tb-btn" title="เลื่อนภาพ (H หรือกด Space ค้าง)">✋ Pan <span class="kbd">H</span></button>
+      <div class="sep"></div>
+      <button id="btnZoomOut" class="tb-btn" title="ซูมออก (-)">−</button>
+      <span id="zoomLabel" style="min-width:44px;text-align:center;font-weight:600;color:#cbd5f5;">100%</span>
+      <button id="btnZoomIn" class="tb-btn" title="ซูมเข้า (+)">+</button>
+      <button id="btnZoomFit" class="tb-btn" title="พอดีจอ (0)">Fit</button>
+      <div class="sep"></div>
+      <button id="btnUndo" class="tb-btn" disabled title="ย้อนกลับ (Ctrl+Z)">↩️ Undo</button>
+      <button id="btnRedo" class="tb-btn" disabled title="ทำซ้ำ (Ctrl+Y)">↪️ Redo</button>
+      <button id="btnSave" class="tb-btn primary" title="บันทึก Label (Ctrl+S)">💾 Save</button>
+    </div>
+
+    <div class="top-group">
+      <label class="toggle-pill" title="บันทึกอัตโนมัติเมื่อเปลี่ยนภาพ">
+        <input type="checkbox" id="chkAutoSave" checked /> Auto-Save
+      </label>
+      <button id="btnAiToggle" class="tb-btn" title="เปิด/ปิดแผง AI Auto Annotation">✨ AI Assist</button>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="main">
+    <!-- LEFT SIDEBAR: IMAGE GALLERY -->
+    <div class="left-sidebar">
+      <div class="sidebar-head">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;font-size:12px;color:#cbd5f5;">🖼️ Images</span>
+          <span id="galleryCount" style="font-size:11px;color:var(--muted);">0</span>
+        </div>
+        <div class="filter-pills">
+          <div class="pill active" data-mode="all">ทั้งหมด</div>
+          <div class="pill" data-mode="unlabeled">ยังไม่ตี</div>
+          <div class="pill" data-mode="labeled">ตีแล้ว</div>
+        </div>
+      </div>
+      <div id="galleryList" class="gallery-list"></div>
+    </div>
+
+    <!-- CENTER: ANNOTATION CANVAS -->
+    <div id="canvasWrap" class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div id="canvasEmpty" class="canvas-empty">เลือก Dataset หรือภาพทางซ้ายเพื่อเริ่มตีกรอบ</div>
+
+      <!-- INSTANT CLASS SELECTION POPUP -->
+      <div id="classPopup" class="class-popup">
+        <div class="popup-title">
+          <span>เลือกหรือเพิ่มคลาส</span>
+          <span class="kbd">Enter ยืนยัน · Esc ยกเลิก</span>
+        </div>
+        <input id="popupSearch" class="popup-input" type="text" placeholder="ค้นหาหรือพิมพ์ชื่อคลาสใหม่..." autocomplete="off" />
+        <div id="popupList" class="popup-list"></div>
+        <div class="popup-actions">
+          <button id="popupConfirm" class="tb-btn primary" style="flex:1;justify-content:center;">ยืนยัน (Enter)</button>
+          <button id="popupCancel" class="tb-btn danger">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLLAPSIBLE AI ASSIST DRAWER -->
+    <div id="aiDrawer" class="ai-drawer">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700;font-size:13.5px;color:#e5ecff;">✨ AI Assist (Auto-Label)</span>
+        <button id="btnAiClose" class="icon-btn" title="ปิด">✕</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.45;">
+        ใช้โมเดลช่วยตีกรอบให้อัตโนมัติ หลังเสร็จกรอบจะขึ้นบน Canvas ทันทีเพื่อให้ตรวจ/แก้ต่อได้
+      </div>
+      <div class="ai-field">
+        <label>โมเดล (.pt)</label>
+        <select id="aiModel" class="tb-select" style="width:100%;"></select>
+      </div>
+      <div class="ai-field">
+        <label>Confidence: <strong id="aiConfVal">0.25</strong></label>
+        <input id="aiConf" type="range" min="0.05" max="0.95" step="0.05" value="0.25" style="accent-color:var(--accent);" />
+      </div>
+      <label class="toggle-pill" style="padding:0;">
+        <input type="checkbox" id="aiAutoAdd" checked /> เพิ่มคลาสใหม่จากโมเดลอัตโนมัติ
+      </label>
+      <button id="btnAiSingle" class="tb-btn" style="justify-content:center;">✨ ทำนายภาพนี้ (ทดลอง)</button>
+      <hr style="border:none;border-top:1px solid var(--border);" />
+      <div class="ai-field">
+        <label>ขอบเขตสำหรับรันทั้งชุด (Batch)</label>
+        <select id="aiScope" class="tb-select" style="width:100%;">
+          <option value="unlabeled">เฉพาะภาพที่ยังไม่ตีกรอบ</option>
+          <option value="all">ทุกภาพใน Split นี้</option>
+        </select>
+      </div>
+      <label class="toggle-pill" style="padding:0;">
+        <input type="checkbox" id="aiOverwrite" /> เขียนทับ Label เดิม (เมื่อเลือกทุกภาพ)
+      </label>
+      <button id="btnAiBatch" class="tb-btn primary" style="justify-content:center;">🤖 ตีกรอบทั้งชุด (Batch)</button>
+      <div id="aiStatus" class="ai-status"></div>
+    </div>
+
+    <!-- RIGHT SIDEBAR: INSPECTOR & CLASS MANAGER -->
+    <div class="right-sidebar">
+      <!-- SELECTED BOX INSPECTOR -->
+      <div class="r-section">
+        <div class="r-title"><span>🎯 กรอบที่เลือก</span></div>
+        <div id="selectedBoxEmpty" style="font-size:12px;color:var(--muted);">คลิกกรอบบนภาพเพื่อแก้คลาส ย้าย หรือปรับขนาด</div>
+        <div id="selectedBoxPanel" style="display:none;flex-direction:column;gap:7px;">
+          <select id="selClassSelect" class="tb-select" style="width:100%;"></select>
+          <div id="selCoords" style="font-size:11.5px;color:var(--muted);font-family:monospace;"></div>
+          <button id="btnDeleteBox" class="tb-btn danger" style="justify-content:center;">🗑️ ลบกรอบนี้ <span class="kbd">Del</span></button>
+        </div>
+      </div>
+
+      <!-- CLASS MANAGER (SYNCED WITH data.yaml) -->
+      <div class="r-section">
+        <div class="r-title">
+          <span>🏷️ Class Manager (data.yaml)</span>
+        </div>
+        <div class="add-row">
+          <input id="newClassInput" type="text" placeholder="เพิ่มคลาสใหม่..." />
+          <button id="btnAddClass" class="tb-btn primary" style="height:30px;padding:0 9px;">➕</button>
+        </div>
+        <div id="classList" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;"></div>
+      </div>
+
+      <!-- BOX LAYERS IN CURRENT IMAGE -->
+      <div class="r-section" style="flex:1;">
+        <div class="r-title">
+          <span>📋 กรอบในภาพนี้</span>
+          <span id="layerCount" style="color:#a5b4fc;">0</span>
+        </div>
+        <div id="layerList" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;"></div>
+        <button id="btnMarkNull" class="tb-btn" style="justify-content:center;margin-top:auto;">⬜ Mark as Null (ภาพว่างไม่มีวัตถุ)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+    <div class="top-group">
+      <button id="btnPrev" class="tb-btn" style="height:26px;" title="ภาพก่อนหน้า (←)">◀ ก่อนหน้า</button>
+      <span id="navCounter" style="min-width:68px;text-align:center;font-weight:700;">0 / 0</span>
+      <button id="btnNext" class="tb-btn" style="height:26px;" title="ภาพถัดไป (→)">ถัดไป ▶</button>
+      <div class="sep"></div>
+      <span id="fileInfo" style="color:var(--muted);">—</span>
+    </div>
+    <div class="top-group">
+      <span style="color:var(--muted);font-size:11px;">V เลือก · B วาด · H เลื่อน · Del ลบ · Ctrl+Z/Y ย้อน/ซ้ำ · Ctrl+S บันทึก</span>
+      <div class="sep"></div>
+      <span id="saveStatus" class="status-dot saved">✓ พร้อมใช้งาน</span>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  const PALETTE = [
+    '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4',
+    '#f97316', '#a855f7', '#14b8a6', '#ef4444', '#84cc16',
+    '#3b82f6', '#eab308'
+  ];
+
+  // ---------------- STATE ----------------
+  const state = {
+    datasets: [],
+    datasetId: new URLSearchParams(location.search).get('dataset') || '',
+    split: 'train',
+    mode: 'all',
+    images: [],
+    imgIndex: -1,
+    classes: [],           // [{id, name, count}]
+    lastClassName: '',
+    boxes: [],             // [{label, xmin, ymin, xmax, ymax}]
+    selectedIdx: -1,
+    dirty: false,
+    tool: 'box',           // 'select' | 'box' | 'pan'
+    spaceHeld: false,
+    undoStack: [],
+    redoStack: [],
+
+    // Image & View Transform
+    imgObj: null,
+    imgW: 0, imgH: 0,
+    scale: 1,
+    offsetX: 0, offsetY: 0,
+
+    // Interaction
+    dragging: null,        // {type: 'draw'|'move'|'resize'|'pan', ...}
+    mouseImg: null,        // {x, y} in image coords
+    pendingBoxIdx: -1,     // box index awaiting popup confirmation
+    popupFocusIdx: 0,
+  };
+
+  // ---------------- DOM ----------------
+  const $ = id => document.getElementById(id);
+  const canvas = $('canvas');
+  const ctx = canvas.getContext('2d');
+  const canvasWrap = $('canvasWrap');
+
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._tm);
+    t._tm = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function colorForClass(name) {
+    const c = state.classes.find(x => x.name === name);
+    const idx = c ? c.id : Math.abs([...name].reduce((a, ch) => a + ch.charCodeAt(0), 0));
+    return PALETTE[idx % PALETTE.length];
+  }
+
+  // ---------------- API HELPERS ----------------
+  async function api(url, opts = {}) {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+      ...opts,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+  }
+
+  // ---------------- UNDO / REDO ----------------
+  function cloneBoxes(boxes) { return boxes.map(b => ({ ...b })); }
+  function pushUndo() {
+    state.undoStack.push(cloneBoxes(state.boxes));
+    if (state.undoStack.length > 60) state.undoStack.shift();
+    state.redoStack = [];
+    updateHistoryButtons();
+  }
+  function setDirty(val) {
+    state.dirty = val;
+    const el = $('saveStatus');
+    if (val) {
+      el.className = 'status-dot dirty';
+      el.textContent = '● ยังไม่ได้บันทึก';
+    } else {
+      el.className = 'status-dot saved';
+      el.textContent = '✓ บันทึกแล้ว';
+    }
+  }
+  function updateHistoryButtons() {
+    $('btnUndo').disabled = state.undoStack.length === 0;
+    $('btnRedo').disabled = state.redoStack.length === 0;
+  }
+  function doUndo() {
+    if (!state.undoStack.length) return;
+    state.redoStack.push(cloneBoxes(state.boxes));
+    state.boxes = state.undoStack.pop();
+    state.selectedIdx = -1;
+    setDirty(true);
+    updateHistoryButtons();
+    syncSidebars();
+    draw();
+  }
+  function doRedo() {
+    if (!state.redoStack.length) return;
+    state.undoStack.push(cloneBoxes(state.boxes));
+    state.boxes = state.redoStack.pop();
+    state.selectedIdx = -1;
+    setDirty(true);
+    updateHistoryButtons();
+    syncSidebars();
+    draw();
+  }
+
+  // ---------------- DATA LOADING ----------------
+  async function loadDatasets() {
+    const data = await api('/api/annotate/datasets');
+    state.datasets = data.datasets || [];
+    const sel = $('dsSelect');
+    sel.innerHTML = '';
+    for (const d of state.datasets) {
+      const opt = document.createElement('option');
+      opt.value = d.dataset_id;
+      opt.textContent = `${d.dataset_name} (${d.total_images} ภาพ)`;
+      sel.appendChild(opt);
+    }
+    if (!state.datasetId || !state.datasets.some(d => d.dataset_id === state.datasetId)) {
+      state.datasetId = state.datasets[0]?.dataset_id || '';
+    }
+    sel.value = state.datasetId;
+    if (state.datasetId) await loadImageList(0);
+    else renderEmpty();
+  }
+
+  async function loadModels() {
+    const data = await api('/api/annotate/models');
+    const sel = $('aiModel');
+    sel.innerHTML = '';
+    for (const m of data.models || []) {
+      const opt = document.createElement('option');
+      opt.value = m.path;
+      opt.textContent = m.label;
+      sel.appendChild(opt);
+    }
+  }
+
+  async function loadImageList(selectIndex = 0) {
+    if (!state.datasetId) return;
+    const data = await api(
+      `/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/images?split=${state.split}&mode=${state.mode}`
+    );
+    state.images = data.images || [];
+    state.classes = data.classes || [];
+    if (!state.lastClassName && state.classes.length) {
+      state.lastClassName = state.classes[0].name;
+    }
+    renderGallery();
+    renderClassManager();
+    if (state.images.length > 0) {
+      await openImage(Math.max(0, Math.min(selectIndex, state.images.length - 1)), true);
+    } else {
+      state.imgIndex = -1;
+      state.imgObj = null;
+      state.boxes = [];
+      state.selectedIdx = -1;
+      renderEmpty();
+    }
+  }
+
+  function renderEmpty() {
+    $('canvasEmpty').style.display = 'block';
+    $('navCounter').textContent = '0 / 0';
+    $('fileInfo').textContent = 'ไม่มีภาพในเงื่อนไขที่เลือก';
+    syncSidebars();
+    draw();
+  }
+
+  async function guardUnsaved() {
+    if (!state.dirty || state.imgIndex < 0) return true;
+    if ($('chkAutoSave').checked) {
+      await saveCurrentLabels(true);
+      return true;
+    }
+    return confirm('มีการแก้ไขที่ยังไม่ได้บันทึก ต้องการเปลี่ยนภาพโดยไม่บันทึกหรือไม่?');
+  }
+
+  async function openImage(index, skipGuard = false) {
+    if (index < 0 || index >= state.images.length) return;
+    if (!skipGuard && !(await guardUnsaved())) return;
+    closePopup(true);
+
+    state.imgIndex = index;
+    const entry = state.images[index];
+    const encDs = encodeURIComponent(state.datasetId);
+    const encKey = entry.key.split('/').map(encodeURIComponent).join('/');
+
+    const lblData = await api(`/api/annotate/dataset/${encDs}/labels/${entry.split}/${encKey}`);
+    state.boxes = (lblData.boxes || []).map(b => ({ ...b }));
+    state.classes = lblData.classes || state.classes;
+    if (!state.lastClassName && state.classes.length) state.lastClassName = state.classes[0].name;
+    state.selectedIdx = -1;
+    state.undoStack = [];
+    state.redoStack = [];
+    setDirty(false);
+    updateHistoryButtons();
+
+    const img = new Image();
+    img.onload = () => {
+      state.imgObj = img;
+      state.imgW = img.naturalWidth;
+      state.imgH = img.naturalHeight;
+      $('canvasEmpty').style.display = 'none';
+      fitToView();
+      draw();
+    };
+    img.src = `/api/annotate/dataset/${encDs}/image/${entry.split}/${encKey}?t=${Date.now()}`;
+
+    $('navCounter').textContent = `${index + 1} / ${state.images.length}`;
+    $('fileInfo').textContent = `${entry.split}/${entry.key} · ${lblData.width}×${lblData.height} px`;
+    highlightActiveThumb();
+    syncSidebars();
+  }
+
+  async function saveCurrentLabels(silent = false) {
+    if (state.imgIndex < 0 || !state.datasetId) return;
+    const entry = state.images[state.imgIndex];
+    const encDs = encodeURIComponent(state.datasetId);
+    const encKey = entry.key.split('/').map(encodeURIComponent).join('/');
+    try {
+      const res = await api(`/api/annotate/dataset/${encDs}/labels/${entry.split}/${encKey}`, {
+        method: 'POST',
+        body: JSON.stringify({ boxes: state.boxes }),
+      });
+      state.classes = res.classes || state.classes;
+      entry.has_label = true;
+      entry.box_count = res.box_count;
+      setDirty(false);
+      renderGallery();
+      renderClassManager();
+      if (!silent) showToast(`บันทึกแล้ว (${res.box_count} กรอบ)`);
+    } catch (e) {
+      showToast('❌ บันทึกไม่สำเร็จ: ' + e.message);
+    }
+  }
+
+  // ---------------- VIEW & COORDINATES ----------------
+  function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvasWrap.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function fitToView() {
+    if (!state.imgObj) return;
+    const rect = canvasWrap.getBoundingClientRect();
+    const pad = 28;
+    const sx = (rect.width - pad * 2) / state.imgW;
+    const sy = (rect.height - pad * 2) / state.imgH;
+    state.scale = Math.max(0.1, Math.min(sx, sy, 3));
+    state.offsetX = (rect.width - state.imgW * state.scale) / 2;
+    state.offsetY = (rect.height - state.imgH * state.scale) / 2;
+    $('zoomLabel').textContent = Math.round(state.scale * 100) + '%';
+    draw();
+  }
+
+  function zoomAt(factor, cx, cy) {
+    if (!state.imgObj) return;
+    const rect = canvasWrap.getBoundingClientRect();
+    const px = cx ?? rect.width / 2;
+    const py = cy ?? rect.height / 2;
+    const imgX = (px - state.offsetX) / state.scale;
+    const imgY = (py - state.offsetY) / state.scale;
+    const newScale = Math.max(0.1, Math.min(10, state.scale * factor));
+    state.offsetX = px - imgX * newScale;
+    state.offsetY = py - imgY * newScale;
+    state.scale = newScale;
+    $('zoomLabel').textContent = Math.round(state.scale * 100) + '%';
+    draw();
+  }
+
+  function screenToImg(sx, sy) {
+    return {
+      x: (sx - state.offsetX) / state.scale,
+      y: (sy - state.offsetY) / state.scale,
+    };
+  }
+  function imgToScreen(ix, iy) {
+    return {
+      x: ix * state.scale + state.offsetX,
+      y: iy * state.scale + state.offsetY,
+    };
+  }
+
+  // ---------------- DRAWING ----------------
+  const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+  function getHandleCoords(b) {
+    const mx = (b.xmin + b.xmax) / 2, my = (b.ymin + b.ymax) / 2;
+    return {
+      nw: [b.xmin, b.ymin], n: [mx, b.ymin], ne: [b.xmax, b.ymin],
+      e: [b.xmax, my], se: [b.xmax, b.ymax], s: [mx, b.ymax],
+      sw: [b.xmin, b.ymax], w: [b.xmin, my],
+    };
+  }
+
+  function draw() {
+    const rect = canvasWrap.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    if (!state.imgObj) return;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = state.scale < 2;
+    ctx.drawImage(
+      state.imgObj,
+      state.offsetX, state.offsetY,
+      state.imgW * state.scale, state.imgH * state.scale
+    );
+
+    // Draw boxes
+    state.boxes.forEach((b, idx) => {
+      const p1 = imgToScreen(b.xmin, b.ymin);
+      const p2 = imgToScreen(b.xmax, b.ymax);
+      const w = p2.x - p1.x, h = p2.y - p1.y;
+      const col = colorForClass(b.label);
+      const isSel = idx === state.selectedIdx;
+
+      ctx.fillStyle = col + (isSel ? '33' : '1f');
+      ctx.fillRect(p1.x, p1.y, w, h);
+
+      ctx.strokeStyle = col;
+      ctx.lineWidth = isSel ? 2.5 : 1.8;
+      ctx.strokeRect(p1.x, p1.y, w, h);
+
+      // Label tag
+      ctx.font = '600 11.5px Inter, sans-serif';
+      const tw = ctx.measureText(b.label).width + 10;
+      const ty = Math.max(0, p1.y - 19);
+      ctx.fillStyle = col;
+      ctx.fillRect(p1.x, ty, tw, 18);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(b.label, p1.x + 5, ty + 13);
+
+      // 8 resize handles on selected box
+      if (isSel) {
+        const hs = getHandleCoords(b);
+        for (const key of HANDLES) {
+          const hp = imgToScreen(hs[key][0], hs[key][1]);
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(hp.x - 4, hp.y - 4, 8, 8);
+          ctx.strokeRect(hp.x - 4, hp.y - 4, 8, 8);
+        }
+      }
+    });
+
+    // Active drag-draw preview
+    if (state.dragging && state.dragging.type === 'draw') {
+      const d = state.dragging;
+      const p1 = imgToScreen(Math.min(d.x0, d.x1), Math.min(d.y0, d.y1));
+      const p2 = imgToScreen(Math.max(d.x0, d.x1), Math.max(d.y0, d.y1));
+      ctx.fillStyle = 'rgba(109, 74, 255, 0.22)';
+      ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      ctx.strokeStyle = '#a5b4fc';
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      ctx.setLineDash([]);
+    }
+
+    // Crosshair in Box tool
+    if (state.tool === 'box' && !state.spaceHeld && state.mouseImg && !state.dragging) {
+      const sp = imgToScreen(state.mouseImg.x, state.mouseImg.y);
+      ctx.strokeStyle = 'rgba(165, 180, 252, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sp.x, 0); ctx.lineTo(sp.x, rect.height);
+      ctx.moveTo(0, sp.y); ctx.lineTo(rect.width, sp.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------------- HIT TESTING ----------------
+  function hitTestHandle(sx, sy) {
+    if (state.selectedIdx < 0) return null;
+    const b = state.boxes[state.selectedIdx];
+    const hs = getHandleCoords(b);
+    for (const key of HANDLES) {
+      const hp = imgToScreen(hs[key][0], hs[key][1]);
+      if (Math.abs(sx - hp.x) <= 7 && Math.abs(sy - hp.y) <= 7) return key;
+    }
+    return null;
+  }
+
+  function hitTestBox(ix, iy) {
+    // Prefer smallest box when nested
+    let best = -1, bestArea = Infinity;
+    state.boxes.forEach((b, idx) => {
+      if (ix >= b.xmin && ix <= b.xmax && iy >= b.ymin && iy <= b.ymax) {
+        const area = (b.xmax - b.xmin) * (b.ymax - b.ymin);
+        if (area < bestArea) { bestArea = area; best = idx; }
+      }
+    });
+    return best;
+  }
+
+  // ---------------- MOUSE EVENTS ----------------
+  function getCanvasPos(e) {
+    const r = canvas.getBoundingClientRect();
+    return { sx: e.clientX - r.left, sy: e.clientY - r.top };
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    if (!state.imgObj) return;
+    if ($('classPopup').classList.contains('open')) return;
+    const { sx, sy } = getCanvasPos(e);
+    const { x: ix, y: iy } = screenToImg(sx, sy);
+
+    // Middle click, Space+drag, or Pan tool
+    if (e.button === 1 || state.tool === 'pan' || state.spaceHeld) {
+      state.dragging = { type: 'pan', startX: sx, startY: sy, origOX: state.offsetX, origOY: state.offsetY };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+    if (e.button !== 0) return;
+
+    // Check resize handle on currently selected box (works in both Select and Box modes!)
+    const handle = hitTestHandle(sx, sy);
+    if (handle) {
+      pushUndo();
+      state.dragging = { type: 'resize', handle, idx: state.selectedIdx, orig: { ...state.boxes[state.selectedIdx] } };
+      return;
+    }
+
+    if (state.tool === 'select') {
+      const hit = hitTestBox(ix, iy);
+      state.selectedIdx = hit;
+      syncSidebars();
+      draw();
+      if (hit >= 0) {
+        pushUndo();
+        state.dragging = { type: 'move', idx: hit, startIX: ix, startIY: iy, orig: { ...state.boxes[hit] } };
+      }
+      return;
+    }
+
+    if (state.tool === 'box') {
+      const cx = Math.max(0, Math.min(state.imgW, ix));
+      const cy = Math.max(0, Math.min(state.imgH, iy));
+      state.dragging = { type: 'draw', x0: cx, y0: cy, x1: cx, y1: cy };
+    }
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!state.imgObj) return;
+    const { sx, sy } = getCanvasPos(e);
+    const { x: ix, y: iy } = screenToImg(sx, sy);
+    state.mouseImg = { x: ix, y: iy };
+
+    if (!state.dragging) {
+      const h = hitTestHandle(sx, sy);
+      if (h) canvas.style.cursor = h + '-resize';
+      else if (state.tool === 'pan' || state.spaceHeld) canvas.style.cursor = 'grab';
+      else if (state.tool === 'select') canvas.style.cursor = hitTestBox(ix, iy) >= 0 ? 'move' : 'default';
+      else canvas.style.cursor = 'crosshair';
+      draw();
+      return;
+    }
+
+    const d = state.dragging;
+    if (d.type === 'pan') {
+      state.offsetX = d.origOX + (sx - d.startX);
+      state.offsetY = d.origOY + (sy - d.startY);
+      draw();
+    } else if (d.type === 'draw') {
+      d.x1 = Math.max(0, Math.min(state.imgW, ix));
+      d.y1 = Math.max(0, Math.min(state.imgH, iy));
+      draw();
+    } else if (d.type === 'move') {
+      const b = state.boxes[d.idx];
+      const bw = d.orig.xmax - d.orig.xmin, bh = d.orig.ymax - d.orig.ymin;
+      let nx = d.orig.xmin + (ix - d.startIX);
+      let ny = d.orig.ymin + (iy - d.startIY);
+      nx = Math.max(0, Math.min(state.imgW - bw, nx));
+      ny = Math.max(0, Math.min(state.imgH - bh, ny));
+      b.xmin = Math.round(nx); b.ymin = Math.round(ny);
+      b.xmax = Math.round(nx + bw); b.ymax = Math.round(ny + bh);
+      setDirty(true);
+      syncSelectedInspector();
+      draw();
+    } else if (d.type === 'resize') {
+      const b = state.boxes[d.idx];
+      const o = d.orig;
+      let { xmin, ymin, xmax, ymax } = o;
+      const cx = Math.max(0, Math.min(state.imgW, ix));
+      const cy = Math.max(0, Math.min(state.imgH, iy));
+      if (d.handle.includes('w')) xmin = Math.min(xmax - 4, cx);
+      if (d.handle.includes('e')) xmax = Math.max(xmin + 4, cx);
+      if (d.handle.includes('n')) ymin = Math.min(ymax - 4, cy);
+      if (d.handle.includes('s')) ymax = Math.max(ymin + 4, cy);
+      b.xmin = Math.round(xmin); b.ymin = Math.round(ymin);
+      b.xmax = Math.round(xmax); b.ymax = Math.round(ymax);
+      setDirty(true);
+      syncSelectedInspector();
+      draw();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!state.dragging) return;
+    const d = state.dragging;
+    state.dragging = null;
+
+    if (d.type === 'pan') {
+      canvas.style.cursor = state.tool === 'pan' ? 'grab' : 'crosshair';
+      return;
+    }
+    if (d.type === 'draw') {
+      const xmin = Math.round(Math.min(d.x0, d.x1));
+      const ymin = Math.round(Math.min(d.y0, d.y1));
+      const xmax = Math.round(Math.max(d.x0, d.x1));
+      const ymax = Math.round(Math.max(d.y0, d.y1));
+      if (xmax - xmin < 5 || ymax - ymin < 5) {
+        draw();
+        return;
+      }
+      pushUndo();
+      const defaultCls = state.lastClassName || state.classes[0]?.name || '';
+      state.boxes.push({ label: defaultCls, xmin, ymin, xmax, ymax });
+      state.selectedIdx = state.boxes.length - 1;
+      state.pendingBoxIdx = state.selectedIdx;
+      setDirty(true);
+      syncSidebars();
+      draw();
+      openClassPopup(xmax, ymin);
+    }
+  });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const { sx, sy } = getCanvasPos(e);
+    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, sx, sy);
+  }, { passive: false });
+
+  // ---------------- INSTANT CLASS SELECTION POPUP ----------------
+  function openClassPopup(imgX, imgY) {
+    const popup = $('classPopup');
+    const wrapRect = canvasWrap.getBoundingClientRect();
+    const sp = imgToScreen(imgX, imgY);
+    const left = Math.max(10, Math.min(wrapRect.width - 265, sp.x + 12));
+    const top = Math.max(10, Math.min(wrapRect.height - 290, sp.y));
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+    popup.classList.add('open');
+
+    const input = $('popupSearch');
+    input.value = state.lastClassName || state.classes[0]?.name || '';
+    state.popupFocusIdx = 0;
+    renderPopupList();
+    setTimeout(() => { input.focus(); input.select(); }, 10);
+  }
+
+  function renderPopupList() {
+    const q = $('popupSearch').value.trim();
+    const qLow = q.toLowerCase();
+    const list = $('popupList');
+    list.innerHTML = '';
+
+    const matched = state.classes.filter(c => !qLow || c.name.toLowerCase().includes(qLow));
+    const exactMatch = state.classes.some(c => c.name.toLowerCase() === qLow);
+
+    matched.forEach((c, idx) => {
+      const div = document.createElement('div');
+      div.className = 'popup-item' + (idx === state.popupFocusIdx ? ' focused' : '');
+      div.innerHTML = `<span style="display:flex;align-items:center;gap:6px;"><span class="dot" style="background:${colorForClass(c.name)}"></span>${c.name}</span><span class="kbd">${idx < 9 ? idx + 1 : ''}</span>`;
+      div.onclick = () => confirmPopupClass(c.name);
+      list.appendChild(div);
+    });
+
+    if (q && !exactMatch) {
+      const addDiv = document.createElement('div');
+      addDiv.className = 'popup-item' + (matched.length === 0 ? ' focused' : '');
+      addDiv.style.borderColor = '#6d4aff';
+      addDiv.innerHTML = `<span>➕ เพิ่มคลาสใหม่ "<strong>${q}</strong>"</span><span class="kbd">Enter</span>`;
+      addDiv.onclick = () => confirmPopupClass(q, true);
+      list.appendChild(addDiv);
+    }
+  }
+
+  async function confirmPopupClass(className, createIfMissing = true) {
+    const name = (className || $('popupSearch').value || '').trim();
+    if (!name) return;
+
+    const exists = state.classes.some(c => c.name === name);
+    if (!exists && createIfMissing && state.datasetId) {
+      try {
+        const res = await api(`/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/classes`, {
+          method: 'POST',
+          body: JSON.stringify({ name }),
+        });
+        state.classes = res.classes || state.classes;
+        showToast(`เพิ่มคลาสใหม่ "${name}" ใน data.yaml แล้ว`);
+      } catch (e) {
+        showToast('❌ ' + e.message);
+        return;
+      }
+    }
+
+    if (state.pendingBoxIdx >= 0 && state.pendingBoxIdx < state.boxes.length) {
+      state.boxes[state.pendingBoxIdx].label = name;
+    }
+    state.lastClassName = name;
+    state.pendingBoxIdx = -1;
+    $('classPopup').classList.remove('open');
+    setDirty(true);
+    syncSidebars();
+    draw();
+  }
+
+  function closePopup(cancelPendingBox) {
+    if (!$('classPopup').classList.contains('open')) return;
+    $('classPopup').classList.remove('open');
+    if (cancelPendingBox && state.pendingBoxIdx >= 0 && state.pendingBoxIdx < state.boxes.length) {
+      state.boxes.splice(state.pendingBoxIdx, 1);
+      state.selectedIdx = -1;
+      state.undoStack.pop();
+      updateHistoryButtons();
+      syncSidebars();
+      draw();
+    }
+    state.pendingBoxIdx = -1;
+  }
+
+  $('popupSearch').addEventListener('input', () => { state.popupFocusIdx = 0; renderPopupList(); });
+  $('popupSearch').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const q = $('popupSearch').value.trim();
+      const matched = state.classes.filter(c => !q || c.name.toLowerCase().includes(q.toLowerCase()));
+      const exact = state.classes.find(c => c.name.toLowerCase() === q.toLowerCase());
+      if (exact) confirmPopupClass(exact.name);
+      else if (q && matched.length === 0) confirmPopupClass(q, true);
+      else if (matched[state.popupFocusIdx]) confirmPopupClass(matched[state.popupFocusIdx].name);
+      else if (q) confirmPopupClass(q, true);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closePopup(true);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      state.popupFocusIdx++;
+      renderPopupList();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      state.popupFocusIdx = Math.max(0, state.popupFocusIdx - 1);
+      renderPopupList();
+    }
+  });
+  $('popupConfirm').onclick = () => confirmPopupClass($('popupSearch').value.trim(), true);
+  $('popupCancel').onclick = () => closePopup(true);
+
+  // ---------------- SIDEBAR RENDERERS ----------------
+  function renderGallery() {
+    const list = $('galleryList');
+    $('galleryCount').textContent = `${state.images.length} ภาพ`;
+    list.innerHTML = '';
+    const encDs = encodeURIComponent(state.datasetId);
+    state.images.forEach((im, idx) => {
+      const card = document.createElement('div');
+      card.className = 'thumb-card' + (idx === state.imgIndex ? ' active' : '');
+      card.dataset.idx = idx;
+      const encKey = im.key.split('/').map(encodeURIComponent).join('/');
+      const badgeCls = im.has_label ? 'labeled' : 'unlabeled';
+      const badgeTxt = im.has_label ? (im.box_count > 0 ? `✓ ${im.box_count}` : '✓ Null') : '—';
+      card.innerHTML = `
+        <img loading="lazy" src="/api/annotate/dataset/${encDs}/image/${im.split}/${encKey}" alt="" />
+        <span class="thumb-badge ${badgeCls}">${badgeTxt}</span>
+        <div class="thumb-meta" title="${im.key}">${im.key}</div>
+      `;
+      card.onclick = () => openImage(idx);
+      list.appendChild(card);
+    });
+  }
+
+  function highlightActiveThumb() {
+    document.querySelectorAll('.thumb-card').forEach(el => {
+      el.classList.toggle('active', Number(el.dataset.idx) === state.imgIndex);
+    });
+    const active = document.querySelector('.thumb-card.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderClassManager() {
+    const list = $('classList');
+    list.innerHTML = '';
+    const maxId = state.classes.reduce((m, c) => Math.max(m, c.id), -1);
+
+    state.classes.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'class-row' + (c.name === state.lastClassName ? ' default-cls' : '');
+      row.title = 'คลิกเพื่อตั้งเป็นคลาสเริ่มต้นตอนวาดกรอบ';
+      row.innerHTML = `
+        <span class="dot" style="background:${colorForClass(c.name)}"></span>
+        <span class="cid">#${c.id}</span>
+        <span class="cname">${c.name}</span>
+        <span class="ccnt">${c.count}</span>
+      `;
+      row.onclick = () => {
+        state.lastClassName = c.name;
+        renderClassManager();
+        showToast(`ตั้งคลาสเริ่มต้นเป็น "${c.name}"`);
+      };
+
+      const btnRen = document.createElement('button');
+      btnRen.className = 'icon-btn'; btnRen.textContent = '✏️'; btnRen.title = 'เปลี่ยนชื่อคลาสใน data.yaml';
+      btnRen.onclick = async ev => {
+        ev.stopPropagation();
+        const nv = prompt(`เปลี่ยนชื่อคลาส #${c.id}:`, c.name);
+        if (!nv || nv.trim() === c.name) return;
+        try {
+          const oldName = c.name;
+          const res = await api(`/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/classes/${c.id}`, {
+            method: 'PUT', body: JSON.stringify({ name: nv.trim() }),
+          });
+          state.classes = res.classes;
+          state.boxes.forEach(b => { if (b.label === oldName) b.label = nv.trim(); });
+          if (state.lastClassName === oldName) state.lastClassName = nv.trim();
+          syncSidebars();
+          draw();
+          showToast(`เปลี่ยนชื่อเป็น "${nv.trim()}" แล้ว`);
+        } catch (err) { showToast('❌ ' + err.message); }
+      };
+      row.appendChild(btnRen);
+
+      if (c.count === 0) {
+        const btnDel = document.createElement('button');
+        btnDel.className = 'icon-btn'; btnDel.textContent = '🗑️'; btnDel.title = 'ลบคลาสนี้ (ไม่มีกรอบใช้งาน — ปรับ ID คลาสที่เหลือให้อัตโนมัติ)';
+        btnDel.onclick = async ev => {
+          ev.stopPropagation();
+          if (!confirm(`ลบคลาส "#${c.id} ${c.name}" ออกจาก data.yaml? (ID คลาสที่เหลือจะถูกจัดเรียงใหม่ให้ต่อเนื่องอัตโนมัติ)`)) return;
+          try {
+            const res = await api(`/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/classes/${c.id}`, { method: 'DELETE' });
+            state.classes = res.classes;
+            if (state.lastClassName === c.name) state.lastClassName = state.classes[0]?.name || '';
+            syncSidebars();
+            draw();
+            showToast(`ลบคลาส "${c.name}" แล้ว`);
+          } catch (err) { showToast('❌ ' + err.message); }
+        };
+        row.appendChild(btnDel);
+      }
+      list.appendChild(row);
+    });
+  }
+
+  function syncSelectedInspector() {
+    const empty = $('selectedBoxEmpty');
+    const panel = $('selectedBoxPanel');
+    if (state.selectedIdx < 0 || state.selectedIdx >= state.boxes.length) {
+      empty.style.display = 'block';
+      panel.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    panel.style.display = 'flex';
+    const b = state.boxes[state.selectedIdx];
+    const sel = $('selClassSelect');
+    sel.innerHTML = '';
+    for (const c of state.classes) {
+      const opt = document.createElement('option');
+      opt.value = c.name; opt.textContent = `#${c.id} ${c.name}`;
+      sel.appendChild(opt);
+    }
+    sel.value = b.label;
+    $('selCoords').textContent = `x:${b.xmin}..${b.xmax}  y:${b.ymin}..${b.ymax}  (${b.xmax - b.xmin}×${b.ymax - b.ymin} px)`;
+  }
+
+  function renderLayers() {
+    const list = $('layerList');
+    $('layerCount').textContent = String(state.boxes.length);
+    list.innerHTML = '';
+    state.boxes.forEach((b, idx) => {
+      const row = document.createElement('div');
+      row.className = 'layer-row' + (idx === state.selectedIdx ? ' selected' : '');
+      row.innerHTML = `
+        <span class="dot" style="background:${colorForClass(b.label)}"></span>
+        <span class="linfo">${idx + 1}. ${b.label} (${b.xmax - b.xmin}×${b.ymax - b.ymin})</span>
+      `;
+      row.onclick = () => { state.selectedIdx = idx; syncSidebars(); draw(); };
+      const del = document.createElement('button');
+      del.className = 'icon-btn'; del.textContent = '×'; del.title = 'ลบกรอบนี้';
+      del.onclick = ev => { ev.stopPropagation(); deleteBox(idx); };
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function syncSidebars() {
+    renderClassManager();
+    syncSelectedInspector();
+    renderLayers();
+  }
+
+  function deleteBox(idx) {
+    if (idx < 0 || idx >= state.boxes.length) return;
+    pushUndo();
+    state.boxes.splice(idx, 1);
+    state.selectedIdx = -1;
+    setDirty(true);
+    syncSidebars();
+    draw();
+  }
+
+  // ---------------- TOOLBAR & CONTROLS ----------------
+  function setTool(t) {
+    state.tool = t;
+    $('toolSelect').classList.toggle('active', t === 'select');
+    $('toolBox').classList.toggle('active', t === 'box');
+    $('toolPan').classList.toggle('active', t === 'pan');
+    draw();
+  }
+
+  $('toolSelect').onclick = () => setTool('select');
+  $('toolBox').onclick = () => setTool('box');
+  $('toolPan').onclick = () => setTool('pan');
+  $('btnZoomIn').onclick = () => zoomAt(1.25);
+  $('btnZoomOut').onclick = () => zoomAt(0.8);
+  $('btnZoomFit').onclick = () => fitToView();
+  $('btnUndo').onclick = doUndo;
+  $('btnRedo').onclick = doRedo;
+  $('btnSave').onclick = () => saveCurrentLabels(false);
+
+  $('dsSelect').onchange = async e => {
+    if (!(await guardUnsaved())) { e.target.value = state.datasetId; return; }
+    state.datasetId = e.target.value;
+    state.lastClassName = '';
+    await loadImageList(0);
+  };
+  $('splitSelect').onchange = async e => {
+    if (!(await guardUnsaved())) { e.target.value = state.split; return; }
+    state.split = e.target.value;
+    await loadImageList(0);
+  };
+  document.querySelectorAll('.pill').forEach(p => {
+    p.onclick = async () => {
+      if (!(await guardUnsaved())) return;
+      document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+      state.mode = p.dataset.mode;
+      await loadImageList(0);
+    };
+  });
+
+  $('btnPrev').onclick = () => openImage((state.imgIndex - 1 + state.images.length) % state.images.length);
+  $('btnNext').onclick = () => openImage((state.imgIndex + 1) % state.images.length);
+
+  $('selClassSelect').onchange = e => {
+    if (state.selectedIdx < 0) return;
+    pushUndo();
+    state.boxes[state.selectedIdx].label = e.target.value;
+    state.lastClassName = e.target.value;
+    setDirty(true);
+    syncSidebars();
+    draw();
+  };
+  $('btnDeleteBox').onclick = () => deleteBox(state.selectedIdx);
+
+  $('btnAddClass').onclick = async () => {
+    const inp = $('newClassInput');
+    const name = inp.value.trim();
+    if (!name || !state.datasetId) return;
+    try {
+      const res = await api(`/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/classes`, {
+        method: 'POST', body: JSON.stringify({ name }),
+      });
+      state.classes = res.classes;
+      state.lastClassName = name;
+      inp.value = '';
+      syncSidebars();
+      showToast(`เพิ่มคลาส "${name}" แล้ว`);
+    } catch (e) { showToast('❌ ' + e.message); }
+  };
+  $('newClassInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnAddClass').click(); });
+
+  $('btnMarkNull').onclick = async () => {
+    if (state.imgIndex < 0 || !state.datasetId) return;
+    const entry = state.images[state.imgIndex];
+    const encDs = encodeURIComponent(state.datasetId);
+    const encKey = entry.key.split('/').map(encodeURIComponent).join('/');
+    try {
+      const res = await api(`/api/annotate/dataset/${encDs}/null/${entry.split}/${encKey}`, { method: 'POST' });
+      state.boxes = [];
+      state.selectedIdx = -1;
+      state.classes = res.classes || state.classes;
+      entry.has_label = true; entry.box_count = 0;
+      setDirty(false);
+      renderGallery();
+      syncSidebars();
+      draw();
+      showToast('บันทึกเป็น Null (ภาพว่าง) แล้ว');
+      if (state.imgIndex + 1 < state.images.length) await openImage(state.imgIndex + 1, true);
+    } catch (e) { showToast('❌ ' + e.message); }
+  };
+
+  // ---------------- AI ASSIST DRAWER ----------------
+  function toggleAiDrawer(force) {
+    const d = $('aiDrawer');
+    const open = force !== undefined ? force : !d.classList.contains('open');
+    d.classList.toggle('open', open);
+    $('btnAiToggle').classList.toggle('active', open);
+  }
+  $('btnAiToggle').onclick = () => toggleAiDrawer();
+  $('btnAiClose').onclick = () => toggleAiDrawer(false);
+  $('aiConf').oninput = e => { $('aiConfVal').textContent = Number(e.target.value).toFixed(2); };
+
+  function setAiStatus(msg) {
+    const el = $('aiStatus');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  $('btnAiSingle').onclick = async () => {
+    if (state.imgIndex < 0 || !state.datasetId) return;
+    const entry = state.images[state.imgIndex];
+    setAiStatus('⏳ กำลังรัน AI ทำนายภาพนี้...');
+    try {
+      const res = await api(`/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/autolabel/single`, {
+        method: 'POST',
+        body: JSON.stringify({
+          split: entry.split,
+          key: entry.key,
+          weights_path: $('aiModel').value,
+          conf: Number($('aiConf').value),
+          auto_add_classes: $('aiAutoAdd').checked,
+        }),
+      });
+      pushUndo();
+      state.boxes = res.boxes || [];
+      state.classes = res.classes || state.classes;
+      state.selectedIdx = -1;
+      entry.has_label = true; entry.box_count = res.box_count;
+      setDirty(false);
+      renderGallery();
+      syncSidebars();
+      draw();
+      setAiStatus(`✅ พบ ${res.box_count} กรอบในภาพนี้ — แก้ไข/ลบกรอบบน Canvas ต่อได้เลย`);
+    } catch (e) { setAiStatus('❌ ' + e.message); }
+  };
+
+  $('btnAiBatch').onclick = async () => {
+    if (!state.datasetId) return;
+    setAiStatus('⏳ กำลังรัน AI ตีกรอบทั้งชุด กรุณารอสักครู่...');
+    try {
+      const res = await api(`/api/annotate/dataset/${encodeURIComponent(state.datasetId)}/autolabel/batch`, {
+        method: 'POST',
+        body: JSON.stringify({
+          split: state.split,
+          weights_path: $('aiModel').value,
+          conf: Number($('aiConf').value),
+          scope: $('aiScope').value,
+          auto_add_classes: $('aiAutoAdd').checked,
+          allow_overwrite: $('aiOverwrite').checked,
+        }),
+      });
+      const s = res.summary;
+      setAiStatus(`✅ เสร็จแล้ว! สแกน ${s.images_scanned} ภาพ · เขียน Label ${s.written ?? 0} ภาพ (${s.total_boxes} กรอบ) — ตรวจ/แก้กรอบในหน้านี้ได้เลย`);
+      await loadImageList(Math.max(0, state.imgIndex));
+    } catch (e) { setAiStatus('❌ ' + e.message); }
+  };
+
+  // ---------------- KEYBOARD SHORTCUTS ----------------
+  window.addEventListener('keydown', e => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if ($('classPopup').classList.contains('open')) return;
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveCurrentLabels(false); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doUndo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); return; }
+
+    if (e.key === ' ') { state.spaceHeld = true; canvas.style.cursor = 'grab'; return; }
+    if (e.key.toLowerCase() === 'v') setTool('select');
+    else if (e.key.toLowerCase() === 'b') setTool('box');
+    else if (e.key.toLowerCase() === 'h') setTool('pan');
+    else if (e.key === '+' || e.key === '=') zoomAt(1.2);
+    else if (e.key === '-') zoomAt(0.8);
+    else if (e.key === '0') fitToView();
+    else if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (state.selectedIdx >= 0) { e.preventDefault(); deleteBox(state.selectedIdx); }
+    } else if (e.key === 'ArrowRight') {
+      if (state.images.length) openImage((state.imgIndex + 1) % state.images.length);
+    } else if (e.key === 'ArrowLeft') {
+      if (state.images.length) openImage((state.imgIndex - 1 + state.images.length) % state.images.length);
+    } else if (e.key === 'Escape') {
+      state.selectedIdx = -1; syncSidebars(); draw();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.key === ' ') { state.spaceHeld = false; canvas.style.cursor = state.tool === 'box' ? 'crosshair' : 'default'; }
+  });
+
+  window.addEventListener('beforeunload', e => {
+    if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------------- INIT ----------------
+  resizeCanvas();
+  loadModels();
+  loadDatasets();
+})();
+</script>
+</body>
+</html>

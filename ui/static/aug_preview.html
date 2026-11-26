@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Offline Augmentation Studio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0b1224; color: #e2e8f0;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 12.5px; overflow: hidden;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 310px 1fr;
+    height: 100vh;
+    width: 100%;
+  }
+  /* LEFT PANEL: Transform cards (CiRA-style) */
+  .left-panel {
+    background: #0f172a;
+    border-right: 1px solid #233255;
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card {
+    background: #131f3a;
+    border: 1px solid #25365e;
+    border-radius: 8px;
+    padding: 8px 10px;
+    transition: border-color .15s;
+  }
+  .card.active { border-color: #6344f5; }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .card-head label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #f1f5ff;
+    cursor: pointer;
+    user-select: none;
+  }
+  .card-head input[type="checkbox"] {
+    accent-color: #7c5cff;
+    width: 14px; height: 14px;
+    cursor: pointer;
+  }
+  .val-pill {
+    font-size: 11px;
+    color: #a5b4fc;
+    background: #0b1224;
+    border: 1px solid #25365e;
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-body { display: flex; flex-direction: column; gap: 6px; }
+  .card:not(.active) .card-body { opacity: 0.38; pointer-events: none; }
+  .num-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .num-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+  .num-field span {
+    color: #94a3c8;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .num-field input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    background: #0b1224;
+    border: 1px solid #2b3f6b;
+    border-radius: 5px;
+    color: #f1f5ff;
+    padding: 3px 5px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .num-field input[type="number"]:focus {
+    outline: none;
+    border-color: #7c5cff;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: #7c5cff;
+    cursor: grab;
+    height: 6px;
+  }
+  input[type="range"]:active { cursor: grabbing; }
+
+  /* RIGHT PANEL: Large Preview + Apply Bar */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    background: #080d1a;
+    padding: 10px 12px;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0f172a;
+    border: 1px solid #233255;
+    border-radius: 8px;
+    padding: 7px 12px;
+    gap: 8px;
+  }
+  .top-info { font-size: 12px; color: #cbd5f5; }
+  .top-info strong { color: #f1f5ff; }
+  .btn-group { display: flex; gap: 6px; }
+  .btn {
+    background: #1a2748;
+    color: #e2e8f0;
+    border: 1px solid #2b3f6b;
+    border-radius: 6px;
+    padding: 5px 11px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .btn:hover { background: #263968; }
+  .btn-primary {
+    background: linear-gradient(90deg, #6344f5, #7c5cff);
+    border-color: #7c5cff;
+    color: #ffffff;
+    font-weight: 600;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .canvas-stage {
+    flex: 1;
+    min-height: 0;
+    background: #050914;
+    border: 1px solid #233255;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .empty {
+    color: #8fa1c7;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .bottom-bar {
+    background: #0f172a;
+    border: 1px solid #233255;
+    border-radius: 8px;
+    padding: 9px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .apply-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .field-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .field-col span { font-size: 11px; color: #94a3c8; }
+  .field-col input {
+    background: #0b1224;
+    border: 1px solid #2b3f6b;
+    border-radius: 6px;
+    color: #f1f5ff;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .status-line {
+    font-size: 12px;
+    color: #93c5fd;
+    min-height: 16px;
+  }
+  .status-line.ok { color: #4ade80; }
+  .status-line.err { color: #f87171; }
+
+  /* Subtle dark scrollbar */
+  .left-panel::-webkit-scrollbar { width: 6px; }
+  .left-panel::-webkit-scrollbar-track { background: #0b1224; }
+  .left-panel::-webkit-scrollbar-thumb { background: #263968; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- LEFT: CiRA-style Transform Cards -->
+  <div class="left-panel" id="leftPanel"></div>
+
+  <!-- RIGHT: Large Live Preview Canvas + Apply Controls -->
+  <div class="right-panel">
+    <div class="top-bar">
+      <div class="top-info" id="sampleInfo"><strong>Live Preview</strong> · Loading sample...</div>
+      <div class="btn-group">
+        <button class="btn" id="btnPrev">Previous</button>
+        <button class="btn" id="btnNext">Next</button>
+        <button class="btn" id="btnReset">Reset Preview</button>
+      </div>
+    </div>
+
+    <div class="canvas-stage">
+      <canvas id="cv"></canvas>
+      <div class="empty" id="emptyMsg" style="display:none;">Select a dataset with training images to preview augmentation.</div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="apply-row">
+        <div class="field-col" style="width:110px;">
+          <span>Copies / Image</span>
+          <input type="number" id="inCopies" value="2" min="1" max="50" step="1" />
+        </div>
+        <div class="field-col" style="width:90px;">
+          <span>Seed</span>
+          <input type="number" id="inSeed" value="42" step="1" />
+        </div>
+        <div class="field-col" style="flex:1;min-width:160px;">
+          <span>New Dataset Name (optional)</span>
+          <input type="text" id="inNewName" placeholder="e.g. board_aug_v1" />
+        </div>
+        <button class="btn btn-primary" id="btnApply" style="height:30px;">Apply Augmentation</button>
+      </div>
+      <div class="status-line" id="statusLine">Drag any slider on the left to preview continuously. Validation and Test sets remain unchanged.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const qs = new URLSearchParams(window.location.search);
+const datasetId = qs.get("dataset") || "";
+
+// Transform definitions matching CiRA CORE style + Phase 1 Brief §8
+const TRANSFORMS = [
+  { key: "rotation",    label: "Rotation",    enabled: true,  hasMin: true,  min: -180, max: 180, step: 90,  neutral: 0,   unit: "°" },
+  { key: "contrast",    label: "Contrast",    enabled: true,  hasMin: true,  min: 0.2,  max: 1.2, step: 0.2, neutral: 1.0, unit: "x" },
+  { key: "brightness",  label: "Brightness",  enabled: false, hasMin: true,  min: 0.7,  max: 1.3, step: 0.1, neutral: 1.0, unit: "x" },
+  { key: "noise",       label: "Noise",       enabled: false, hasMin: false, min: 0,    max: 15,  step: 5,   neutral: 0,   unit: ""  },
+  { key: "blur",        label: "Blur",        enabled: false, hasMin: false, min: 0,    max: 5,   step: 1,   neutral: 0,   unit: "px"},
+  { key: "scale",       label: "Scale",       enabled: false, hasMin: true,  min: 0.8,  max: 1.2, step: 0.1, neutral: 1.0, unit: "x" },
+  { key: "translation", label: "Translation", enabled: false, hasMin: true,  min: -10,  max: 10,  step: 5,   neutral: 0,   unit: "%" },
+  { key: "saturation",  label: "Saturation",  enabled: false, hasMin: true,  min: 0.7,  max: 1.3, step: 0.1, neutral: 1.0, unit: "x" },
+  { key: "hue",         label: "Hue",         enabled: false, hasMin: true,  min: -15,  max: 15,  step: 5,   neutral: 0,   unit: "°" },
+];
+
+const state = {};
+const leftPanel = document.getElementById("leftPanel");
+
+function fmtVal(t, v) {
+  const num = parseFloat(v);
+  const s = Number.isInteger(num) ? String(num) : num.toFixed(2).replace(/0$/, "");
+  return `${s}${t.unit}`;
+}
+
+function buildCards() {
+  leftPanel.innerHTML = "";
+  for (const t of TRANSFORMS) {
+    state[t.key] = {
+      enabled: t.enabled,
+      min: t.min,
+      max: t.max,
+      step: t.step,
+      preview: t.neutral,
+    };
+    const card = document.createElement("div");
+    card.className = "card" + (t.enabled ? " active" : "");
+    card.id = `card_${t.key}`;
+
+    const minMaxRow = t.hasMin
+      ? `
+        <div class="num-row">
+          <div class="num-field"><span>min:</span><input type="number" id="min_${t.key}" value="${t.min}" step="any" /></div>
+          <div class="num-field"><span>max:</span><input type="number" id="max_${t.key}" value="${t.max}" step="any" /></div>
+        </div>
+        <div class="num-row">
+          <div class="num-field" style="max-width:52%;"><span>step:</span><input type="number" id="step_${t.key}" value="${t.step}" min="0" step="any" /></div>
+        </div>
+      `
+      : `
+        <div class="num-row">
+          <div class="num-field"><span>step:</span><input type="number" id="step_${t.key}" value="${t.step}" min="0" step="any" /></div>
+          <div class="num-field"><span>max:</span><input type="number" id="max_${t.key}" value="${t.max}" min="0" step="any" /></div>
+        </div>
+      `;
+
+    card.innerHTML = `
+      <div class="card-head">
+        <label><input type="checkbox" id="chk_${t.key}" ${t.enabled ? "checked" : ""} /> ${t.label}</label>
+        <span class="val-pill" id="val_${t.key}">${fmtVal(t, t.neutral)}</span>
+      </div>
+      <div class="card-body">
+        ${minMaxRow}
+        <input type="range" id="sl_${t.key}" min="${t.min}" max="${t.max}" step="${t.step || 'any'}" value="${t.neutral}" />
+      </div>
+    `;
+    leftPanel.appendChild(card);
+
+    // Wire checkbox
+    const chk = document.getElementById(`chk_${t.key}`);
+    chk.addEventListener("change", () => {
+      state[t.key].enabled = chk.checked;
+      card.classList.toggle("active", chk.checked);
+      scheduleDraw();
+    });
+
+    // Wire min/max/step number inputs -> live sync slider bounds
+    const syncBounds = () => {
+      const sl = document.getElementById(`sl_${t.key}`);
+      const lo = t.hasMin ? parseFloat(document.getElementById(`min_${t.key}`).value) : 0;
+      const hi = parseFloat(document.getElementById(`max_${t.key}`).value);
+      const st = parseFloat(document.getElementById(`step_${t.key}`).value);
+      if (!isNaN(lo)) state[t.key].min = lo;
+      if (!isNaN(hi)) state[t.key].max = hi;
+      if (!isNaN(st) && st >= 0) state[t.key].step = st;
+      const effLo = Math.min(state[t.key].min, state[t.key].max);
+      const effHi = Math.max(state[t.key].min, state[t.key].max);
+      sl.min = effLo;
+      sl.max = effHi;
+      sl.step = state[t.key].step > 0 ? state[t.key].step : "any";
+      let cur = parseFloat(sl.value);
+      if (isNaN(cur) || cur < effLo || cur > effHi) {
+        cur = Math.max(effLo, Math.min(effHi, t.neutral));
+        sl.value = cur;
+      }
+      state[t.key].preview = parseFloat(sl.value);
+      document.getElementById(`val_${t.key}`).textContent = fmtVal(t, state[t.key].preview);
+      scheduleDraw();
+    };
+    if (t.hasMin) document.getElementById(`min_${t.key}`).addEventListener("input", syncBounds);
+    document.getElementById(`max_${t.key}`).addEventListener("input", syncBounds);
+    document.getElementById(`step_${t.key}`).addEventListener("input", syncBounds);
+
+    // Wire continuous-drag scrub slider (60 FPS)
+    const sl = document.getElementById(`sl_${t.key}`);
+    sl.addEventListener("input", () => {
+      state[t.key].preview = parseFloat(sl.value);
+      document.getElementById(`val_${t.key}`).textContent = fmtVal(t, state[t.key].preview);
+      scheduleDraw();
+    });
+  }
+
+  // Flip card
+  const flipCard = document.createElement("div");
+  flipCard.className = "card";
+  flipCard.innerHTML = `
+    <div class="card-head" style="margin-bottom:4px;">
+      <span style="font-weight:600;color:#f1f5ff;">Flip</span>
+      <span class="sub" style="font-size:11px;color:#8fa1c7;">50% random on apply</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="chk_hflip" style="accent-color:#7c5cff;" /> Horizontal Flip
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="chk_vflip" style="accent-color:#7c5cff;" /> Vertical Flip
+      </label>
+    </div>
+  `;
+  leftPanel.appendChild(flipCard);
+  state.hflip = { enabled: false };
+  state.vflip = { enabled: false };
+  document.getElementById("chk_hflip").addEventListener("change", (e) => {
+    state.hflip.enabled = e.target.checked;
+    scheduleDraw();
+  });
+  document.getElementById("chk_vflip").addEventListener("change", (e) => {
+    state.vflip.enabled = e.target.checked;
+    scheduleDraw();
+  });
+}
+
+// ---------------- 60 FPS Canvas Renderer ----------------
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const emptyMsg = document.getElementById("emptyMsg");
+const sampleInfo = document.getElementById("sampleInfo");
+const statusLine = document.getElementById("statusLine");
+
+let sampleIdx = 0;
+let totalSamples = 0;
+let imgEl = null;
+let boxes = [];
+let rafPending = false;
+const COLORS = ["#22c55e", "#6366f1", "#f59e0b", "#ec4899", "#06b6d4", "#a855f7"];
+
+function scheduleDraw() {
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    draw();
+  });
+}
+
+function draw() {
+  if (!imgEl || !imgEl.naturalWidth) return;
+
+  const maxW = 720;
+  const ratio = Math.min(1, maxW / imgEl.naturalWidth);
+  const w = Math.round(imgEl.naturalWidth * ratio);
+  const h = Math.round(imgEl.naturalHeight * ratio);
+  if (cv.width !== w || cv.height !== h) {
+    cv.width = w;
+    cv.height = h;
+  }
+
+  const rot = state.rotation.enabled ? state.rotation.preview : 0;
+  const scale = state.scale.enabled ? Math.max(0.3, Math.min(2.0, state.scale.preview)) : 1.0;
+  const trPct = state.translation.enabled ? state.translation.preview : 0;
+  const contrast = state.contrast.enabled ? Math.max(0.1, state.contrast.preview) : 1.0;
+  const bright = state.brightness.enabled ? Math.max(0.1, state.brightness.preview) : 1.0;
+  const sat = state.saturation.enabled ? Math.max(0.0, state.saturation.preview) : 1.0;
+  const hue = state.hue.enabled ? state.hue.preview : 0;
+  const blur = state.blur.enabled ? Math.max(0, state.blur.preview) : 0;
+  const noise = state.noise.enabled ? Math.max(0, state.noise.preview) : 0;
+  const hflip = state.hflip.enabled;
+  const vflip = state.vflip.enabled;
+
+  const tx = (trPct / 100) * w;
+  const ty = (trPct / 100) * h;
+  const rad = (rot * Math.PI) / 180;
+  const cosA = Math.cos(rad);
+  const sinA = Math.sin(rad);
+  const cx = w / 2;
+  const cy = h / 2;
+
+  ctx.save();
+  ctx.fillStyle = "#3f3f46";
+  ctx.fillRect(0, 0, w, h);
+  ctx.filter = `brightness(${bright * 100}%) contrast(${contrast * 100}%) saturate(${sat * 100}%) hue-rotate(${hue}deg) blur(${blur}px)`;
+  ctx.translate(cx + tx, cy + ty);
+  ctx.rotate(rad);
+  ctx.scale(scale * (hflip ? -1 : 1), scale * (vflip ? -1 : 1));
+  ctx.drawImage(imgEl, -cx, -cy, w, h);
+  ctx.restore();
+
+  if (noise > 0) {
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    let seed = 1337;
+    const amp = noise * 1.5;
+    for (let i = 0; i < data.length; i += 4) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const n = ((seed / 4294967295) - 0.5) * 2 * amp;
+      data[i] = Math.max(0, Math.min(255, data[i] + n));
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + n));
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + n));
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  function xformPt(px, py) {
+    const x = hflip ? (w - px) : px;
+    const y = vflip ? (h - py) : py;
+    const dx = (x - cx) * scale;
+    const dy = (y - cy) * scale;
+    return [
+      dx * cosA - dy * sinA + cx + tx,
+      dx * sinA + dy * cosA + cy + ty,
+    ];
+  }
+
+  ctx.lineWidth = 2;
+  ctx.font = "600 12px Inter, Segoe UI, sans-serif";
+  for (const b of boxes) {
+    const bx1 = (b.cx - b.w / 2) * w;
+    const by1 = (b.cy - b.h / 2) * h;
+    const bx2 = (b.cx + b.w / 2) * w;
+    const by2 = (b.cy + b.h / 2) * h;
+    const pts = [xformPt(bx1, by1), xformPt(bx2, by1), xformPt(bx2, by2), xformPt(bx1, by2)];
+    const xs = pts.map(p => p[0]);
+    const ys = pts.map(p => p[1]);
+    const x1 = Math.max(0, Math.min(w, Math.min(...xs)));
+    const y1 = Math.max(0, Math.min(h, Math.min(...ys)));
+    const x2 = Math.max(0, Math.min(w, Math.max(...xs)));
+    const y2 = Math.max(0, Math.min(h, Math.max(...ys)));
+    if (x2 - x1 < 2 || y2 - y1 < 2) continue;
+
+    const color = COLORS[b.class_id % COLORS.length];
+    ctx.strokeStyle = color;
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+    const label = b.class_name || `class_${b.class_id}`;
+    const tw = ctx.measureText(label).width + 8;
+    const ly = Math.max(0, y1 - 17);
+    ctx.fillStyle = color;
+    ctx.fillRect(x1, ly, tw, 17);
+    ctx.fillStyle = "#08101e";
+    ctx.fillText(label, x1 + 4, ly + 13);
+  }
+}
+
+async function loadSample(idx) {
+  if (!datasetId) {
+    cv.style.display = "none";
+    emptyMsg.style.display = "block";
+    sampleInfo.innerHTML = "<strong>Live Preview</strong> · No dataset selected";
+    return;
+  }
+  try {
+    const res = await fetch(`/api/aug/sample/${encodeURIComponent(datasetId)}?index=${idx}`);
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    sampleIdx = data.index;
+    totalSamples = data.total;
+    boxes = data.boxes || [];
+    sampleInfo.innerHTML = `<strong>Sample ${sampleIdx + 1} / ${totalSamples}</strong> · ${data.filename} (${boxes.length} boxes)`;
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.onload = () => {
+      imgEl = im;
+      cv.style.display = "block";
+      emptyMsg.style.display = "none";
+      draw();
+    };
+    im.src = data.image_url;
+  } catch (e) {
+    cv.style.display = "none";
+    emptyMsg.style.display = "block";
+    emptyMsg.textContent = "No training images available for preview.";
+  }
+}
+
+document.getElementById("btnPrev").addEventListener("click", () => {
+  if (totalSamples > 0) loadSample((sampleIdx - 1 + totalSamples) % totalSamples);
+});
+document.getElementById("btnNext").addEventListener("click", () => {
+  if (totalSamples > 0) loadSample((sampleIdx + 1) % totalSamples);
+});
+document.getElementById("btnReset").addEventListener("click", () => {
+  for (const t of TRANSFORMS) {
+    state[t.key].preview = t.neutral;
+    const sl = document.getElementById(`sl_${t.key}`);
+    sl.value = t.neutral;
+    document.getElementById(`val_${t.key}`).textContent = fmtVal(t, t.neutral);
+  }
+  scheduleDraw();
+});
+
+document.getElementById("btnApply").addEventListener("click", async () => {
+  if (!datasetId) {
+    statusLine.className = "status-line err";
+    statusLine.textContent = "Select a dataset first.";
+    return;
+  }
+  const btn = document.getElementById("btnApply");
+  btn.disabled = true;
+  statusLine.className = "status-line";
+  statusLine.textContent = "Generating offline augmented dataset (Train set only)...";
+  try {
+    const ranges = {};
+    for (const t of TRANSFORMS) {
+      ranges[t.key] = {
+        enabled: !!state[t.key].enabled,
+        min: state[t.key].min,
+        max: state[t.key].max,
+        step: state[t.key].step,
+      };
+    }
+    ranges.hflip = { enabled: !!state.hflip.enabled };
+    ranges.vflip = { enabled: !!state.vflip.enabled };
+
+    const res = await fetch(`/api/aug/apply/${encodeURIComponent(datasetId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        copies_per_image: parseInt(document.getElementById("inCopies").value || "2", 10),
+        seed: parseInt(document.getElementById("inSeed").value || "42", 10),
+        new_name: document.getElementById("inNewName").value || null,
+        ranges,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Augmentation failed");
+    const c = data.counts;
+    statusLine.className = "status-line ok";
+    statusLine.textContent = `Created "${data.dataset_name}" — Train: ${c.train_original} + ${c.train_augmented} = ${c.train_original + c.train_augmented} images (Val: ${c.val}, Test: ${c.test} untouched). Refresh Dataset dropdown to select it.`;
+  } catch (e) {
+    statusLine.className = "status-line err";
+    statusLine.textContent = `Error: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+buildCards();
+loadSample(0);
+</script>
+</body>
+</html>

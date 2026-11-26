@@ -1,0 +1,1 @@
+"""Ultralytics YOLO model adapters."""

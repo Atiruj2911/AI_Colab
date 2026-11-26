@@ -1,0 +1,17 @@
+# AI Training Studio — Phase 1 Dependencies
+# Pinned to compatible ranges tested with Google Colab (Python 3.10-3.12) & PyTorch CUDA.
+# Note: On Google Colab, PyTorch (torch/torchvision) is pre-installed with CUDA matching the runtime GPU.
+# Do not overwrite Colab's CUDA-enabled PyTorch unless installing locally without torch.
+
+ultralytics>=8.3.0,<8.4.0
+gradio>=5.0.0,<7.0.0
+gradio-image-annotation>=0.5.0,<1.0.0
+pyyaml>=6.0.1,<7.0.0
+pillow>=10.0.0,<13.0.0
+numpy>=1.24.0,<2.4.0
+matplotlib>=3.8.0,<4.0.0
+psutil>=5.9.0,<7.0.0
+onnx>=1.16.0,<1.19.0
+onnxslim>=0.1.34
+onnxruntime>=1.18.0,<1.25.0
+pytest>=8.0.0,<9.0.0

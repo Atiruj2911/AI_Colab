@@ -1,0 +1,8 @@
+AI Training Studio — Cursor Reference Pack
+
+Files:
+- PROJECT_BLUEPRINT.md: product scope, architecture, roadmap, constraints, and Cursor implementation instructions.
+- ui_reference_board.png: complete visual reference board.
+- ui_reference/: individual page mockups.
+
+Start by reading PROJECT_BLUEPRINT.md. Implement Phase 1 only.
